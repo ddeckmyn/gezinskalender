@@ -122,8 +122,8 @@
 
     async function loadMembers(){
       const { data, error } = await sb.from("members").select("id,name,role").order("name");
-      if (error) return;
-      membersCache = data;
+if (error) { console.error("members error", error); membersCache = []; return; }
+membersCache = data || [];
 
       // "Wie" dropdown = iedereen
       member.innerHTML = "";
@@ -157,20 +157,24 @@
 
     async function loadWeek(){
       const monday=getMonday();
+const rulesRes = await sb
+  .from("recurring_rules")
+  .select(`
+    id, title, weekday, start_time, end_time, location,
+    transport_mode, transport_notes,
+    required_chaperone_member_id, optional_chaperone_member_ids,
+    members ( name )
+  `);
 
-      const { data: rules } = await sb
-        .from("recurring_rules")
-        .select(`
-          id, title, weekday, start_time, end_time, location,
-          transport_mode, transport_notes,
-          required_chaperone_member_id, optional_chaperone_member_ids,
-          members ( name )
-        `);
+const exRes = await sb
+  .from("recurrence_exceptions")
+  .select("rule_id,date");
 
-      const { data: ex } = await sb
-        .from("recurrence_exceptions")
-        .select("rule_id,date");
+if (rulesRes.error) console.error("rules error", rulesRes.error);
+if (exRes.error) console.error("exceptions error", exRes.error);
 
+const rules = rulesRes.data || [];
+const ex = exRes.data || [];
       const byDay=Array.from({length:7},()=>[]);
       rules.forEach(r=>{
         const i = r.weekday;
