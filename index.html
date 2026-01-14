@@ -12,19 +12,19 @@
   <ul id="members"></ul>
   <pre id="debug"></pre>
 <script>
+  const debug = document.getElementById("debug");
+  debug.textContent = "debug start";
+
   const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.co";
   const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   async function loadMembers() {
-    const { data, error } = await supabase.from("members").select("name, role");
+    const res = await supabase.from("members").select("name, role");
+    debug.textContent = "RES: " + JSON.stringify(res, null, 2);
 
-    const debug = document.getElementById("debug");
-    if (error) {
-      debug.textContent = "ERROR: " + JSON.stringify(error, null, 2);
-      return;
-    }
-    debug.textContent = "OK: " + JSON.stringify(data, null, 2);
+    const { data, error } = res;
+    if (error) return;
 
     const ul = document.getElementById("members");
     ul.innerHTML = "";
