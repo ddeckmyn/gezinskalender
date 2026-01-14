@@ -12,9 +12,12 @@
       font-family: sans-serif;
       font-size: 32px;
       padding: 40px;
+      background: #fff;
+      color: #000;
     }
     h1 {
       font-size: 48px;
+      margin-bottom: 30px;
     }
     li {
       margin-bottom: 20px;
@@ -32,6 +35,12 @@
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     async function loadActivities() {
+      const weekStart = new Date();
+      weekStart.setHours(0, 0, 0, 0);
+
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
       const { data, error } = await sb
         .from("activities")
         .select(`
@@ -40,6 +49,8 @@
           start_at,
           members ( name )
         `)
+        .gte("start_at", weekStart.toISOString())
+        .lt("start_at", weekEnd.toISOString())
         .order("start_at");
 
       if (error) return;
@@ -49,9 +60,9 @@
 
       data.forEach(a => {
         const li = document.createElement("li");
-        const start = new Date(a.start_at).toLocaleString();
+        const startTime = new Date(a.start_at).toLocaleString();
         li.textContent =
-          `${a.members.name} — ${a.title} (${a.location}) om ${start}`;
+          `${a.members.name} — ${a.title}${a.location ? " (" + a.location + ")" : ""} om ${startTime}`;
         ul.appendChild(li);
       });
     }
