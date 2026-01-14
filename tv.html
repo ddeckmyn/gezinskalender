@@ -4,14 +4,59 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gezinskalender – TV</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     body {
+      font-family: sans-serif;
       font-size: 32px;
+      padding: 40px;
+    }
+    h1 {
+      font-size: 48px;
+    }
+    li {
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
   <h1>Deze week</h1>
-  <p>TV-modus (placeholder)</p>
+  <ul id="activities"></ul>
+
+  <script>
+    const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
+
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function loadActivities() {
+      const { data, error } = await sb
+        .from("activities")
+        .select(`
+          title,
+          location,
+          start_at,
+          members ( name )
+        `)
+        .order("start_at");
+
+      if (error) return;
+
+      const ul = document.getElementById("activities");
+      ul.innerHTML = "";
+
+      data.forEach(a => {
+        const li = document.createElement("li");
+        const start = new Date(a.start_at).toLocaleString();
+        li.textContent =
+          `${a.members.name} — ${a.title} (${a.location}) om ${start}`;
+        ul.appendChild(li);
+      });
+    }
+
+    loadActivities();
+  </script>
 </body>
 </html>
