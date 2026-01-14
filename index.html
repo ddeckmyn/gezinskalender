@@ -7,27 +7,40 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<script>
-  const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.coL";
-  const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  async function loadMembers() {
-    const { data, error } = await supabase.from("members").select("name, role");
-    if (error) { console.error(error); return; }
-
-    const ul = document.getElementById("members");
-    ul.innerHTML = "";
-    data.forEach(m => {
-      const li = document.createElement("li");
-      li.textContent = `${m.name} (${m.role})`;
-      ul.appendChild(li);
-    });
-  }
-
-  loadMembers();
-</script>
 <body>
   <h1>Gezinskalender</h1>
-<ul id="members"></ul>
+  <ul id="members"></ul>
+
+  <script>
+    const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
+
+    const supabase = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+    async function loadMembers() {
+      const { data, error } = await supabase
+        .from("members")
+        .select("name, role");
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      const ul = document.getElementById("members");
+      ul.innerHTML = "";
+
+      data.forEach(m => {
+        const li = document.createElement("li");
+        li.textContent = `${m.name} (${m.role})`;
+        ul.appendChild(li);
+      });
+    }
+
+    loadMembers();
+  </script>
 </body>
 </html>
