@@ -9,8 +9,21 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    #week strong { margin-right: 20px; }
-    #week-activities > div { margin-top: 12px; }
+  #week strong { margin-right: 20px; }
+
+  #week-activities{
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .day {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 120px;
+  }
+  .day ul { margin: 8px 0 0 20px; }
   </style>
 </head>
 <body>
