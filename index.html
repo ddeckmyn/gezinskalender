@@ -61,13 +61,24 @@
     const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.co";
     const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+function renderWeekHeader() {
+  const el = document.getElementById("week");
 
-    function renderWeekHeader() {
-      const el = document.getElementById("week");
-      const days = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
-      el.innerHTML = days.map(d => `<strong>${d}</strong>`).join("");
-    }
+  const today = new Date();
+  const day = (today.getDay() + 6) % 7; // ma=0 ... zo=6
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - day);
+  monday.setHours(0,0,0,0);
 
+  const names = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
+
+  el.innerHTML = names.map((n, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const label = `${n} ${d.getDate()}/${d.getMonth()+1}`;
+    return `<strong style="margin-right:20px">${label}</strong>`;
+  }).join("");
+}   
     async function loadMembers() {
       const { data } = await sb.from("members").select("name, role");
       const ul = document.getElementById("members");
