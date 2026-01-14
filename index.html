@@ -10,7 +10,9 @@
 <body>
   <h1>Gezinskalender</h1>
   <ul id="members"></ul>
-  <pre id="debug"></pre>
+<h2>Activiteiten</h2>
+<ul id="activities"></ul>
+<pre id="debug"></pre>
 <script>
   const debug = document.getElementById("debug");
   debug.textContent = "debug start";
@@ -36,6 +38,23 @@
   }
 
   loadMembers();
+  loadActivities();
+  async function loadActivities() {
+  const { data, error } = await sb
+    .from("activities")
+    .select("title, location, start_at, end_at");
+
+  if (error) return;
+
+  const ul = document.getElementById("activities");
+  ul.innerHTML = "";
+
+  data.forEach(a => {
+    const li = document.createElement("li");
+    li.textContent = `${a.title} (${a.location})`;
+    ul.appendChild(li);
+  });
+}
 </script>
 </body>
 </html>
