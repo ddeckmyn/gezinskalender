@@ -171,8 +171,8 @@
 
       buckets.forEach((items, i) => {
         const dayDiv = document.createElement("div");
-        dayDiv.innerHTML = `<strong>${names[i]}</strong>`;
-
+dayDiv.className = "day";
+dayDiv.innerHTML = `<strong>${names[i]}</strong>`;
         if (items.length === 0) {
           const p = document.createElement("div");
           p.textContent = "—";
