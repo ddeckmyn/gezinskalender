@@ -4,10 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gezinskalender</title>
+  <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body>
   <h1>Gezinskalender</h1>
   <p>Weekoverzicht (placeholder)</p>
   <p><a href="/tv.html">TV-modus</a></p>
+  <script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js");
+  }
+</script>
 </body>
 </html>
