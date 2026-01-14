@@ -4,218 +4,150 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gezinskalender</title>
-
-  <link rel="manifest" href="/manifest.webmanifest">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
     body { font-family: system-ui, sans-serif; }
-
-    #week-activities{
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 16px;
-      margin: 16px 0 32px;
-    }
-
-    .day{
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 12px;
-      min-height: 120px;
-    }
-
-    .day strong{
-      display: block;
-      margin-bottom: 8px;
-    }
-
-    .day ul{
-      margin: 0 0 0 18px;
-      padding: 0;
-    }
+    #week { display:grid; grid-template-columns:repeat(7,1fr); gap:16px; margin:16px 0 24px; }
+    .day { border:1px solid #ddd; border-radius:12px; padding:12px; min-height:120px; }
+    .day strong{ display:block; margin-bottom:8px; }
+    .day ul{ margin:0 0 0 18px; padding:0; }
+    .muted{ color:#777; }
+    form{ margin-top:16px; }
   </style>
 </head>
 <body>
   <h1>Gezinskalender</h1>
 
-  <h2>Gezinsleden</h2>
-  <ul id="members"></ul>
-
   <h2>Deze week</h2>
-  <div id="week-activities"></div>
+  <div id="week"></div>
 
-  <h2>Activiteiten (lijst)</h2>
-  <ul id="activities"></ul>
-
-  <h3>Nieuwe activiteit</h3>
-  <form id="activity-form">
-    <label>
-      Wie:
-      <select id="member-select"></select>
+  <h3>Nieuwe wekelijkse activiteit</h3>
+  <form id="rule-form">
+    <label>Wie:
+      <select id="member"></select>
     </label>
     <br><br>
-
-    <label>
-      Titel:
-      <input type="text" id="title-input" />
+    <label>Titel:
+      <input id="title" />
     </label>
     <br><br>
-
-    <label>
-      Start:
-      <input type="datetime-local" id="start-input" />
+    <label>Dag:
+      <select id="weekday">
+        <option value="0">Ma</option><option value="1">Di</option><option value="2">Wo</option>
+        <option value="3">Do</option><option value="4">Vr</option><option value="5">Za</option><option value="6">Zo</option>
+      </select>
     </label>
     <br><br>
-
-    <label>
-      Eind:
-      <input type="datetime-local" id="end-input" />
+    <label>Start:
+      <input type="time" id="start_time" />
     </label>
     <br><br>
-
-    <button type="submit">Toevoegen</button>
+    <label>Eind:
+      <input type="time" id="end_time" />
+    </label>
+    <br><br>
+    <button>Toevoegen</button>
   </form>
 
-  <p><a href="/tv.html">TV-modus</a></p>
-
   <script>
-    const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const sb = window.supabase.createClient(
+      "https://jcwxkicgbctylbdlsbcm.supabase.co",
+      "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3"
+    );
 
-    function getMonday() {
-      const today = new Date();
-      const day = (today.getDay() + 6) % 7; // ma=0
-      const monday = new Date(today);
-      monday.setDate(today.getDate() - day);
-      monday.setHours(0,0,0,0);
-      return monday;
+    const names = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
+
+    function getMonday(){
+      const t=new Date(); const d=(t.getDay()+6)%7;
+      const m=new Date(t); m.setDate(t.getDate()-d); m.setHours(0,0,0,0);
+      return m;
     }
 
-    async function loadMembers() {
-      const { data } = await sb.from("members").select("name, role");
-      const ul = document.getElementById("members");
-      ul.innerHTML = "";
-      data.forEach(m => {
-        const li = document.createElement("li");
-        li.textContent = `${m.name} (${m.role})`;
-        ul.appendChild(li);
+    async function fillMembers(){
+      const { data } = await sb.from("members").select("id,name").order("name");
+      const sel=document.getElementById("member");
+      sel.innerHTML="";
+      data.forEach(m=>{
+        const o=document.createElement("option");
+        o.value=m.id; o.textContent=m.name; sel.appendChild(o);
       });
     }
 
-    async function fillMemberSelect() {
-      const { data } = await sb.from("members").select("id, name").order("name");
-      const sel = document.getElementById("member-select");
-      sel.innerHTML = "";
-      data.forEach(m => {
-        const opt = document.createElement("option");
-        opt.value = m.id;
-        opt.textContent = m.name;
-        sel.appendChild(opt);
-      });
-    }
+    async function loadWeek(){
+      const monday=getMonday();
+      const next=new Date(monday); next.setDate(monday.getDate()+7);
 
-    async function loadActivities() {
-      const { data } = await sb
-        .from("activities")
-        .select("title, location, start_at, members ( name )")
-        .order("start_at");
+      const [{data:rules},{data:ex}] = await Promise.all([
+        sb.from("recurring_rules").select("*, members(name)"),
+        sb.from("recurrence_exceptions").select("rule_id,date")
+      ]);
 
-      const ul = document.getElementById("activities");
-      ul.innerHTML = "";
-      data.forEach(a => {
-        const li = document.createElement("li");
-        const start = new Date(a.start_at).toLocaleString();
-        li.textContent =
-          `${a.members.name} — ${a.title}${a.location ? " ("+a.location+")" : ""} om ${start}`;
-        ul.appendChild(li);
-      });
-    }
+      const byDay=Array.from({length:7},()=>[]);
+      rules.forEach(r=>{
+        for(let i=0;i<7;i++){
+          const d=new Date(monday); d.setDate(monday.getDate()+i);
+          if(i!==r.weekday) continue;
+          const iso=d.toISOString().slice(0,10);
+          if(ex.some(e=>e.rule_id===r.id && e.date===iso)) continue;
 
-    async function loadWeekActivities() {
-      const monday = getMonday();
-      const nextMonday = new Date(monday);
-      nextMonday.setDate(monday.getDate() + 7);
-
-      const { data } = await sb
-        .from("activities")
-        .select("title, start_at, members ( name )")
-        .gte("start_at", monday.toISOString())
-        .lt("start_at", nextMonday.toISOString())
-        .order("start_at");
-
-      const buckets = Array.from({ length: 7 }, () => []);
-      data.forEach(a => {
-        const d = new Date(a.start_at);
-        const idx = (d.getDay() + 6) % 7;
-        buckets[idx].push(a);
+          byDay[i].push({
+            rule_id:r.id,
+            who:r.members.name,
+            title:r.title,
+            time:`${r.start_time.slice(0,5)}–${r.end_time.slice(0,5)}`,
+            date:iso
+          });
+        }
       });
 
-      const names = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
-      const container = document.getElementById("week-activities");
-      container.innerHTML = "";
-
-      buckets.forEach((items, i) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-
-        const dayDiv = document.createElement("div");
-        dayDiv.className = "day";
-        dayDiv.innerHTML =
-          `<strong>${names[i]} ${d.getDate()}/${d.getMonth()+1}</strong>`;
-
-        if (items.length === 0) {
-          const p = document.createElement("div");
-          p.textContent = "—";
-          dayDiv.appendChild(p);
+      const grid=document.getElementById("week");
+      grid.innerHTML="";
+      byDay.forEach((items,i)=>{
+        const d=new Date(monday); d.setDate(monday.getDate()+i);
+        const box=document.createElement("div");
+        box.className="day";
+        box.innerHTML=`<strong>${names[i]} ${d.getDate()}/${d.getMonth()+1}</strong>`;
+        if(items.length===0){
+          box.innerHTML+=`<div class="muted">—</div>`;
         } else {
-          const ul = document.createElement("ul");
-          items.forEach(a => {
-            const li = document.createElement("li");
-            const t = new Date(a.start_at)
-              .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            li.textContent = `${t} ${a.members.name}: ${a.title}`;
+          const ul=document.createElement("ul");
+          items.forEach(it=>{
+            const li=document.createElement("li");
+            li.innerHTML=`${it.time} ${it.who}: ${it.title}
+              <button data-rule="${it.rule_id}" data-date="${it.date}">overslaan</button>`;
             ul.appendChild(li);
           });
-          dayDiv.appendChild(ul);
+          box.appendChild(ul);
         }
-
-        container.appendChild(dayDiv);
+        grid.appendChild(box);
       });
     }
 
-    document.getElementById("activity-form")
-      .addEventListener("submit", async (e) => {
-        e.preventDefault();
+    document.getElementById("rule-form").addEventListener("submit", async e=>{
+      e.preventDefault();
+      await sb.from("recurring_rules").insert({
+        member_id: member.value,
+        title: title.value,
+        weekday: +weekday.value,
+        start_time: start_time.value,
+        end_time: end_time.value
+      });
+      e.target.reset();
+      loadWeek();
+    });
 
-        const memberId = member-select.value;
-        const title = title-input.value;
-        const startAt = start-input.value;
-        const endAt = end-input.value;
-
-        if (!memberId || !title || !startAt || !endAt) return;
-
-        await sb.from("activities").insert({
-          member_id: memberId,
-          title,
-          start_at: new Date(startAt).toISOString(),
-          end_at: new Date(endAt).toISOString()
+    document.addEventListener("click", async e=>{
+      if(e.target.tagName==="BUTTON" && e.target.dataset.rule){
+        await sb.from("recurrence_exceptions").insert({
+          rule_id:e.target.dataset.rule,
+          date:e.target.dataset.date
         });
+        loadWeek();
+      }
+    });
 
-        e.target.reset();
-        loadActivities();
-        loadWeekActivities();
-      });
-
-    fillMemberSelect();
-    loadMembers();
-    loadActivities();
-    loadWeekActivities();
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js");
-    }
+    fillMembers();
+    loadWeek();
   </script>
 </body>
 </html>
