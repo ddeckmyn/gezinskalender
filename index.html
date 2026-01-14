@@ -7,6 +7,12 @@
 
   <link rel="manifest" href="/manifest.webmanifest">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    #week strong {
+      margin-right: 20px;
+    }
+  </style>
 </head>
 <body>
   <h1>Gezinskalender</h1>
@@ -14,51 +20,56 @@
   <h2>Gezinsleden</h2>
   <ul id="members"></ul>
 
+  <h2>Deze week</h2>
+  <div id="week"></div>
+
   <h2>Activiteiten</h2>
   <ul id="activities"></ul>
+
   <h3>Nieuwe activiteit</h3>
+  <form id="activity-form">
+    <label>
+      Wie:
+      <select id="member-select"></select>
+    </label>
+    <br><br>
 
-<form id="activity-form">
-  <label>
-    Wie:
-    <select id="member-select"></select>
-  </label>
-  <br><br>
+    <label>
+      Titel:
+      <input type="text" id="title-input" />
+    </label>
+    <br><br>
 
-  <label>
-    Titel:
-    <input type="text" id="title-input" />
-  </label>
-  <br><br>
+    <label>
+      Start:
+      <input type="datetime-local" id="start-input" />
+    </label>
+    <br><br>
 
-  <label>
-    Start:
-    <input type="datetime-local" id="start-input" />
-  </label>
-  <br><br>
+    <label>
+      Eind:
+      <input type="datetime-local" id="end-input" />
+    </label>
+    <br><br>
 
-  <label>
-    Eind:
-    <input type="datetime-local" id="end-input" />
-  </label>
-  <br><br>
-
-  <button type="submit">Toevoegen</button>
-</form>
-
+    <button type="submit">Toevoegen</button>
+  </form>
 
   <p><a href="/tv.html">TV-modus</a></p>
 
   <script>
     const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.co";
     const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
-
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function loadMembers() {
-      const { data, error } = await sb.from("members").select("name, role");
-      if (error) return;
+    function renderWeekHeader() {
+      const el = document.getElementById("week");
+      const days = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+      el.innerHTML = days.map(d => `<strong>${d}</strong>`).join("");
+    }
 
+    async function loadMembers() {
+      const { data } = await sb.from("members").select("name, role");
       const ul = document.getElementById("members");
       ul.innerHTML = "";
       data.forEach(m => {
@@ -68,70 +79,65 @@
       });
     }
 
+    async function fillMemberSelect() {
+      const { data } = await sb.from("members").select("id, name").order("name");
+      const sel = document.getElementById("member-select");
+      sel.innerHTML = "";
+      data.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.name;
+        sel.appendChild(opt);
+      });
+    }
+
     async function loadActivities() {
-      const { data, error } = await sb
+      const { data } = await sb
         .from("activities")
         .select(`
           title,
           location,
           start_at,
-          end_at,
           members ( name )
-        `);
-
-      if (error) return;
+        `)
+        .order("start_at");
 
       const ul = document.getElementById("activities");
       ul.innerHTML = "";
       data.forEach(a => {
         const li = document.createElement("li");
         const start = new Date(a.start_at).toLocaleString();
-        const who = a.members?.name ?? "Onbekend";
-        li.textContent = `${who} — ${a.title}${a.location ? " (" + a.location + ")" : ""} om ${start}`;
+        li.textContent =
+          `${a.members.name} — ${a.title}${a.location ? " (" + a.location + ")" : ""} om ${start}`;
         ul.appendChild(li);
       });
     }
-async function fillMemberSelect() {
-  const { data, error } = await sb.from("members").select("id, name").order("name");
-  if (error) return;
 
-  const sel = document.getElementById("member-select");
-  sel.innerHTML = "";
-  data.forEach(m => {
-    const opt = document.createElement("option");
-    opt.value = m.id;
-    opt.textContent = m.name;
-    sel.appendChild(opt);
-  });
-}
-document.getElementById("activity-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+    document.getElementById("activity-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-  const memberId = document.getElementById("member-select").value;
-  const title = document.getElementById("title-input").value;
-  const startAt = document.getElementById("start-input").value;
-  const endAt = document.getElementById("end-input").value;
+      const memberId = document.getElementById("member-select").value;
+      const title = document.getElementById("title-input").value;
+      const startAt = document.getElementById("start-input").value;
+      const endAt = document.getElementById("end-input").value;
 
-  if (!memberId || !title || !startAt || !endAt) return;
+      if (!memberId || !title || !startAt || !endAt) return;
 
-  const { error } = await sb.from("activities").insert({
-    member_id: memberId,
-    title,
-    start_at: new Date(startAt).toISOString(),
-    end_at: new Date(endAt).toISOString()
-  });
+      await sb.from("activities").insert({
+        member_id: memberId,
+        title,
+        start_at: new Date(startAt).toISOString(),
+        end_at: new Date(endAt).toISOString()
+      });
 
-  if (error) {
-    alert("Opslaan mislukt");
-    return;
-  }
+      e.target.reset();
+      loadActivities();
+    });
 
-  document.getElementById("activity-form").reset();
-  loadActivities();
-});
-fillMemberSelect();
-loadMembers();
-loadActivities();
+    renderWeekHeader();
+    fillMemberSelect();
+    loadMembers();
+    loadActivities();
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js");
