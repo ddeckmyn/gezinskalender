@@ -9,9 +9,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    #week strong {
-      margin-right: 20px;
-    }
+    #week strong { margin-right: 20px; }
+    #week-activities > div { margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -22,6 +21,7 @@
 
   <h2>Deze week</h2>
   <div id="week"></div>
+  <div id="week-activities"></div>
 
   <h2>Activiteiten</h2>
   <ul id="activities"></ul>
@@ -61,26 +61,29 @@
     const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.co";
     const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-function renderWeekHeader() {
-  const el = document.getElementById("week");
 
-  const today = new Date();
-  const day = (today.getDay() + 6) % 7; // ma=0 ... zo=6
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - day);
-  monday.setHours(0,0,0,0);
+    function renderWeekHeader() {
+      const el = document.getElementById("week");
 
-  const names = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
+      const today = new Date();
+      const day = (today.getDay() + 6) % 7; // ma=0 ... zo=6
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - day);
+      monday.setHours(0,0,0,0);
 
-  el.innerHTML = names.map((n, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    const label = `${n} ${d.getDate()}/${d.getMonth()+1}`;
-    return `<strong style="margin-right:20px">${label}</strong>`;
-  }).join("");
-}   
+      const names = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
+      el.innerHTML = names.map((n, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const label = `${n} ${d.getDate()}/${d.getMonth()+1}`;
+        return `<strong>${label}</strong>`;
+      }).join("");
+    }
+
     async function loadMembers() {
-      const { data } = await sb.from("members").select("name, role");
+      const { data, error } = await sb.from("members").select("name, role");
+      if (error) return;
+
       const ul = document.getElementById("members");
       ul.innerHTML = "";
       data.forEach(m => {
@@ -91,7 +94,9 @@ function renderWeekHeader() {
     }
 
     async function fillMemberSelect() {
-      const { data } = await sb.from("members").select("id, name").order("name");
+      const { data, error } = await sb.from("members").select("id, name").order("name");
+      if (error) return;
+
       const sel = document.getElementById("member-select");
       sel.innerHTML = "";
       data.forEach(m => {
@@ -103,15 +108,12 @@ function renderWeekHeader() {
     }
 
     async function loadActivities() {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("activities")
-        .select(`
-          title,
-          location,
-          start_at,
-          members ( name )
-        `)
+        .select(`title, location, start_at, end_at, members ( name )`)
         .order("start_at");
+
+      if (error) return;
 
       const ul = document.getElementById("activities");
       ul.innerHTML = "";
@@ -121,6 +123,59 @@ function renderWeekHeader() {
         li.textContent =
           `${a.members.name} — ${a.title}${a.location ? " (" + a.location + ")" : ""} om ${start}`;
         ul.appendChild(li);
+      });
+    }
+
+    async function loadWeekActivities() {
+      const today = new Date();
+      const day = (today.getDay() + 6) % 7;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - day);
+      monday.setHours(0,0,0,0);
+
+      const nextMonday = new Date(monday);
+      nextMonday.setDate(monday.getDate() + 7);
+
+      const { data, error } = await sb
+        .from("activities")
+        .select(`title, start_at, members ( name )`)
+        .gte("start_at", monday.toISOString())
+        .lt("start_at", nextMonday.toISOString())
+        .order("start_at");
+
+      if (error) return;
+
+      const buckets = Array.from({ length: 7 }, () => []);
+      data.forEach(a => {
+        const d = new Date(a.start_at);
+        const idx = (d.getDay() + 6) % 7;
+        buckets[idx].push(a);
+      });
+
+      const names = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
+      const container = document.getElementById("week-activities");
+      container.innerHTML = "";
+
+      buckets.forEach((items, i) => {
+        const dayDiv = document.createElement("div");
+        dayDiv.innerHTML = `<strong>${names[i]}</strong>`;
+
+        if (items.length === 0) {
+          const p = document.createElement("div");
+          p.textContent = "—";
+          dayDiv.appendChild(p);
+        } else {
+          const ul = document.createElement("ul");
+          items.forEach(a => {
+            const li = document.createElement("li");
+            const t = new Date(a.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            li.textContent = `${t} ${a.members.name}: ${a.title}`;
+            ul.appendChild(li);
+          });
+          dayDiv.appendChild(ul);
+        }
+
+        container.appendChild(dayDiv);
       });
     }
 
@@ -143,12 +198,14 @@ function renderWeekHeader() {
 
       e.target.reset();
       loadActivities();
+      loadWeekActivities();
     });
 
     renderWeekHeader();
     fillMemberSelect();
     loadMembers();
     loadActivities();
+    loadWeekActivities();
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js");
