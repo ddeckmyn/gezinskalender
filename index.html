@@ -104,6 +104,31 @@ async function fillMemberSelect() {
     sel.appendChild(opt);
   });
 }
+document.getElementById("activity-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const memberId = document.getElementById("member-select").value;
+  const title = document.getElementById("title-input").value;
+  const startAt = document.getElementById("start-input").value;
+  const endAt = document.getElementById("end-input").value;
+
+  if (!memberId || !title || !startAt || !endAt) return;
+
+  const { error } = await sb.from("activities").insert({
+    member_id: memberId,
+    title,
+    start_at: new Date(startAt).toISOString(),
+    end_at: new Date(endAt).toISOString()
+  });
+
+  if (error) {
+    alert("Opslaan mislukt");
+    return;
+  }
+
+  document.getElementById("activity-form").reset();
+  loadActivities();
+});
 fillMemberSelect();
 loadMembers();
 loadActivities();
