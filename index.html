@@ -10,7 +10,7 @@
 <body>
   <h1>Gezinskalender</h1>
   <ul id="members"></ul>
-
+  <pre id="debug"></pre>
   <script>
     const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.co";
     const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
@@ -26,10 +26,12 @@
         .select("name, role");
 
       if (error) {
-        console.error(error);
-        return;
-      }
-
+  document.getElementById("debug").textContent =
+    "ERROR: " + JSON.stringify(error, null, 2);
+  return;
+}
+document.getElementById("debug").textContent =
+  "OK: " + JSON.stringify(data, null, 2);
       const ul = document.getElementById("members");
       ul.innerHTML = "";
 
