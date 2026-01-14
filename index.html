@@ -91,9 +91,22 @@
         ul.appendChild(li);
       });
     }
+async function fillMemberSelect() {
+  const { data, error } = await sb.from("members").select("id, name").order("name");
+  if (error) return;
 
-    loadMembers();
-    loadActivities();
+  const sel = document.getElementById("member-select");
+  sel.innerHTML = "";
+  data.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = m.name;
+    sel.appendChild(opt);
+  });
+}
+fillMemberSelect();
+loadMembers();
+loadActivities();
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js");
