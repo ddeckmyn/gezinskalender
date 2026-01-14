@@ -5,7 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gezinskalender</title>
   <link rel="manifest" href="/manifest.webmanifest">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+<script>
+  const SUPABASE_URL = "https://jcwxkicgbctylbdlsbcm.supabase.coL";
+  const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
+
+  const supabase = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+  console.log("Supabase verbonden");
+</script>
 <body>
   <h1>Gezinskalender</h1>
   <p>✅ PWA werkt. Volgende stap: Supabase + weekview.</p>
