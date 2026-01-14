@@ -9,21 +9,31 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-  #week strong { margin-right: 20px; }
+    body { font-family: system-ui, sans-serif; }
 
-  #week-activities{
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 16px;
-    margin-top: 16px;
-  }
-  .day {
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    padding: 12px;
-    min-height: 120px;
-  }
-  .day ul { margin: 8px 0 0 20px; }
+    #week-activities{
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 16px;
+      margin: 16px 0 32px;
+    }
+
+    .day{
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 120px;
+    }
+
+    .day strong{
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .day ul{
+      margin: 0 0 0 18px;
+      padding: 0;
+    }
   </style>
 </head>
 <body>
@@ -33,10 +43,9 @@
   <ul id="members"></ul>
 
   <h2>Deze week</h2>
-  <div id="week"></div>
   <div id="week-activities"></div>
 
-  <h2>Activiteiten</h2>
+  <h2>Activiteiten (lijst)</h2>
   <ul id="activities"></ul>
 
   <h3>Nieuwe activiteit</h3>
@@ -75,28 +84,17 @@
     const SUPABASE_KEY = "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    function renderWeekHeader() {
-      const el = document.getElementById("week");
-
+    function getMonday() {
       const today = new Date();
-      const day = (today.getDay() + 6) % 7; // ma=0 ... zo=6
+      const day = (today.getDay() + 6) % 7; // ma=0
       const monday = new Date(today);
       monday.setDate(today.getDate() - day);
       monday.setHours(0,0,0,0);
-
-      const names = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
-      el.innerHTML = names.map((n, i) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        const label = `${n} ${d.getDate()}/${d.getMonth()+1}`;
-        return `<strong>${label}</strong>`;
-      }).join("");
+      return monday;
     }
 
     async function loadMembers() {
-      const { data, error } = await sb.from("members").select("name, role");
-      if (error) return;
-
+      const { data } = await sb.from("members").select("name, role");
       const ul = document.getElementById("members");
       ul.innerHTML = "";
       data.forEach(m => {
@@ -107,9 +105,7 @@
     }
 
     async function fillMemberSelect() {
-      const { data, error } = await sb.from("members").select("id, name").order("name");
-      if (error) return;
-
+      const { data } = await sb.from("members").select("id, name").order("name");
       const sel = document.getElementById("member-select");
       sel.innerHTML = "";
       data.forEach(m => {
@@ -121,12 +117,10 @@
     }
 
     async function loadActivities() {
-      const { data, error } = await sb
+      const { data } = await sb
         .from("activities")
-        .select(`title, location, start_at, end_at, members ( name )`)
+        .select("title, location, start_at, members ( name )")
         .order("start_at");
-
-      if (error) return;
 
       const ul = document.getElementById("activities");
       ul.innerHTML = "";
@@ -134,29 +128,22 @@
         const li = document.createElement("li");
         const start = new Date(a.start_at).toLocaleString();
         li.textContent =
-          `${a.members.name} — ${a.title}${a.location ? " (" + a.location + ")" : ""} om ${start}`;
+          `${a.members.name} — ${a.title}${a.location ? " ("+a.location+")" : ""} om ${start}`;
         ul.appendChild(li);
       });
     }
 
     async function loadWeekActivities() {
-      const today = new Date();
-      const day = (today.getDay() + 6) % 7;
-      const monday = new Date(today);
-      monday.setDate(today.getDate() - day);
-      monday.setHours(0,0,0,0);
-
+      const monday = getMonday();
       const nextMonday = new Date(monday);
       nextMonday.setDate(monday.getDate() + 7);
 
-      const { data, error } = await sb
+      const { data } = await sb
         .from("activities")
-        .select(`title, start_at, members ( name )`)
+        .select("title, start_at, members ( name )")
         .gte("start_at", monday.toISOString())
         .lt("start_at", nextMonday.toISOString())
         .order("start_at");
-
-      if (error) return;
 
       const buckets = Array.from({ length: 7 }, () => []);
       data.forEach(a => {
@@ -170,9 +157,14 @@
       container.innerHTML = "";
 
       buckets.forEach((items, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+
         const dayDiv = document.createElement("div");
-dayDiv.className = "day";
-dayDiv.innerHTML = `<strong>${names[i]}</strong>`;
+        dayDiv.className = "day";
+        dayDiv.innerHTML =
+          `<strong>${names[i]} ${d.getDate()}/${d.getMonth()+1}</strong>`;
+
         if (items.length === 0) {
           const p = document.createElement("div");
           p.textContent = "—";
@@ -181,7 +173,8 @@ dayDiv.innerHTML = `<strong>${names[i]}</strong>`;
           const ul = document.createElement("ul");
           items.forEach(a => {
             const li = document.createElement("li");
-            const t = new Date(a.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            const t = new Date(a.start_at)
+              .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             li.textContent = `${t} ${a.members.name}: ${a.title}`;
             ul.appendChild(li);
           });
@@ -192,29 +185,29 @@ dayDiv.innerHTML = `<strong>${names[i]}</strong>`;
       });
     }
 
-    document.getElementById("activity-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    document.getElementById("activity-form")
+      .addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-      const memberId = document.getElementById("member-select").value;
-      const title = document.getElementById("title-input").value;
-      const startAt = document.getElementById("start-input").value;
-      const endAt = document.getElementById("end-input").value;
+        const memberId = member-select.value;
+        const title = title-input.value;
+        const startAt = start-input.value;
+        const endAt = end-input.value;
 
-      if (!memberId || !title || !startAt || !endAt) return;
+        if (!memberId || !title || !startAt || !endAt) return;
 
-      await sb.from("activities").insert({
-        member_id: memberId,
-        title,
-        start_at: new Date(startAt).toISOString(),
-        end_at: new Date(endAt).toISOString()
+        await sb.from("activities").insert({
+          member_id: memberId,
+          title,
+          start_at: new Date(startAt).toISOString(),
+          end_at: new Date(endAt).toISOString()
+        });
+
+        e.target.reset();
+        loadActivities();
+        loadWeekActivities();
       });
 
-      e.target.reset();
-      loadActivities();
-      loadWeekActivities();
-    });
-
-    renderWeekHeader();
     fillMemberSelect();
     loadMembers();
     loadActivities();
