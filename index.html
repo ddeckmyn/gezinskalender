@@ -8,11 +8,15 @@
   <style>
     body { font-family: system-ui, sans-serif; }
     #week { display:grid; grid-template-columns:repeat(7,1fr); gap:16px; margin:16px 0 24px; }
-    .day { border:1px solid #ddd; border-radius:12px; padding:12px; min-height:120px; }
+    .day { border:1px solid #ddd; border-radius:12px; padding:12px; min-height:140px; }
     .day strong{ display:block; margin-bottom:8px; }
     .day ul{ margin:0 0 0 18px; padding:0; }
     .muted{ color:#777; }
-    form{ margin-top:16px; }
+    .meta{ color:#444; font-size: 14px; margin-top: 4px; }
+    form{ margin-top:16px; max-width: 520px; }
+    input, select { min-width: 220px; }
+    .row{ margin: 10px 0; }
+    .small{ font-size: 14px; }
   </style>
 </head>
 <body>
@@ -23,29 +27,76 @@
 
   <h3>Nieuwe wekelijkse activiteit</h3>
   <form id="rule-form">
-    <label>Wie:
-      <select id="member"></select>
-    </label>
-    <br><br>
-    <label>Titel:
-      <input id="title" />
-    </label>
-    <br><br>
-    <label>Dag:
-      <select id="weekday">
-        <option value="0">Ma</option><option value="1">Di</option><option value="2">Wo</option>
-        <option value="3">Do</option><option value="4">Vr</option><option value="5">Za</option><option value="6">Zo</option>
-      </select>
-    </label>
-    <br><br>
-    <label>Start:
-      <input type="time" id="start_time" />
-    </label>
-    <br><br>
-    <label>Eind:
-      <input type="time" id="end_time" />
-    </label>
-    <br><br>
+    <div class="row">
+      <label>Wie:
+        <select id="member"></select>
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Titel:
+        <input id="title" />
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Locatie:
+        <input id="location" placeholder="bv. Sporthal" />
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Dag:
+        <select id="weekday">
+          <option value="0">Ma</option><option value="1">Di</option><option value="2">Wo</option>
+          <option value="3">Do</option><option value="4">Vr</option><option value="5">Za</option><option value="6">Zo</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Start:
+        <input type="time" id="start_time" />
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Eind:
+        <input type="time" id="end_time" />
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Transport:
+        <select id="transport_mode">
+          <option value="">(geen)</option>
+          <option value="fiets">fiets</option>
+          <option value="auto">auto</option>
+          <option value="te voet">te voet</option>
+          <option value="ov">OV</option>
+          <option value="anders">anders</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Transport-notitie:
+        <input id="transport_notes" placeholder="bv. papa brengt, fiets mee" />
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Begeleider (moet mee):
+        <select id="required_chaperone"></select>
+      </label>
+      <div class="small muted">Laat leeg als niemand verplicht mee moet.</div>
+    </div>
+
+    <div class="row">
+      <div>Begeleider (kan mee):</div>
+      <div id="optional_chaperones" class="small"></div>
+    </div>
+
     <button>Toevoegen</button>
   </form>
 
@@ -55,7 +106,7 @@
       "sb_publishable_tF7MRrXQu6x3aBtdvLwmhA_FY4A8Eu3"
     );
 
-    const names = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
+    const dayNames = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
 
     function getMonday(){
       const t=new Date(); const d=(t.getDay()+6)%7;
@@ -63,41 +114,95 @@
       return m;
     }
 
-    async function fillMembers(){
-      const { data } = await sb.from("members").select("id,name").order("name");
-      const sel=document.getElementById("member");
-      sel.innerHTML="";
+    function isoDate(d){
+      return d.toISOString().slice(0,10);
+    }
+
+    let membersCache = [];
+
+    async function loadMembers(){
+      const { data, error } = await sb.from("members").select("id,name,role").order("name");
+      if (error) return;
+      membersCache = data;
+
+      // "Wie" dropdown = iedereen
+      member.innerHTML = "";
       data.forEach(m=>{
         const o=document.createElement("option");
-        o.value=m.id; o.textContent=m.name; sel.appendChild(o);
+        o.value=m.id; o.textContent=m.name; member.appendChild(o);
       });
+
+      // "moet mee" = alleen ouders/verzorgers (hier: role='ouder')
+      required_chaperone.innerHTML = `<option value="">(niemand)</option>`;
+      data.filter(m=>m.role==="ouder").forEach(m=>{
+        const o=document.createElement("option");
+        o.value=m.id; o.textContent=m.name; required_chaperone.appendChild(o);
+      });
+
+      // "kan mee" checkboxes = ouders
+      const wrap = document.getElementById("optional_chaperones");
+      wrap.innerHTML = "";
+      data.filter(m=>m.role==="ouder").forEach(m=>{
+        const id = `opt_${m.id}`;
+        const div = document.createElement("div");
+        div.innerHTML = `<label><input type="checkbox" id="${id}" value="${m.id}"> ${m.name}</label>`;
+        wrap.appendChild(div);
+      });
+    }
+
+    function getOptionalChaperoneIds(){
+      const boxes = document.querySelectorAll("#optional_chaperones input[type=checkbox]");
+      return Array.from(boxes).filter(b=>b.checked).map(b=>b.value);
     }
 
     async function loadWeek(){
       const monday=getMonday();
-      const next=new Date(monday); next.setDate(monday.getDate()+7);
 
-      const [{data:rules},{data:ex}] = await Promise.all([
-        sb.from("recurring_rules").select("*, members(name)"),
-        sb.from("recurrence_exceptions").select("rule_id,date")
-      ]);
+      const { data: rules } = await sb
+        .from("recurring_rules")
+        .select(`
+          id, title, weekday, start_time, end_time, location,
+          transport_mode, transport_notes,
+          required_chaperone_member_id, optional_chaperone_member_ids,
+          members ( name )
+        `);
+
+      const { data: ex } = await sb
+        .from("recurrence_exceptions")
+        .select("rule_id,date");
 
       const byDay=Array.from({length:7},()=>[]);
       rules.forEach(r=>{
-        for(let i=0;i<7;i++){
-          const d=new Date(monday); d.setDate(monday.getDate()+i);
-          if(i!==r.weekday) continue;
-          const iso=d.toISOString().slice(0,10);
-          if(ex.some(e=>e.rule_id===r.id && e.date===iso)) continue;
+        const i = r.weekday;
+        const d=new Date(monday); d.setDate(monday.getDate()+i);
+        const date = isoDate(d);
 
-          byDay[i].push({
-            rule_id:r.id,
-            who:r.members.name,
-            title:r.title,
-            time:`${r.start_time.slice(0,5)}–${r.end_time.slice(0,5)}`,
-            date:iso
-          });
-        }
+        if(ex.some(e=>e.rule_id===r.id && e.date===date)) return;
+
+        const requiredName =
+          r.required_chaperone_member_id
+            ? (membersCache.find(m=>m.id===r.required_chaperone_member_id)?.name || "ouder")
+            : null;
+
+        const optionalNames =
+          Array.isArray(r.optional_chaperone_member_ids)
+            ? r.optional_chaperone_member_ids
+                .map(id => membersCache.find(m=>m.id===id)?.name)
+                .filter(Boolean)
+            : [];
+
+        byDay[i].push({
+          rule_id:r.id,
+          who:r.members.name,
+          title:r.title,
+          time:`${r.start_time.slice(0,5)}–${r.end_time.slice(0,5)}`,
+          date,
+          location: r.location || "",
+          transport_mode: r.transport_mode || "",
+          transport_notes: r.transport_notes || "",
+          requiredName,
+          optionalNames
+        });
       });
 
       const grid=document.getElementById("week");
@@ -106,15 +211,29 @@
         const d=new Date(monday); d.setDate(monday.getDate()+i);
         const box=document.createElement("div");
         box.className="day";
-        box.innerHTML=`<strong>${names[i]} ${d.getDate()}/${d.getMonth()+1}</strong>`;
+        box.innerHTML=`<strong>${dayNames[i]} ${d.getDate()}/${d.getMonth()+1}</strong>`;
+
         if(items.length===0){
           box.innerHTML+=`<div class="muted">—</div>`;
         } else {
           const ul=document.createElement("ul");
           items.forEach(it=>{
             const li=document.createElement("li");
-            li.innerHTML=`${it.time} ${it.who}: ${it.title}
-              <button data-rule="${it.rule_id}" data-date="${it.date}">overslaan</button>`;
+            const lines = [];
+
+            lines.push(`<div>${it.time} <b>${it.who}</b>: ${it.title}</div>`);
+
+            if (it.location) lines.push(`<div class="meta">📍 ${it.location}</div>`);
+            if (it.transport_mode || it.transport_notes) {
+              const t = [it.transport_mode, it.transport_notes].filter(Boolean).join(" — ");
+              lines.push(`<div class="meta">🚗 ${t}</div>`);
+            }
+            if (it.requiredName) lines.push(`<div class="meta">👤 moet mee: ${it.requiredName}</div>`);
+            if (it.optionalNames.length) lines.push(`<div class="meta">👥 kan mee: ${it.optionalNames.join(", ")}</div>`);
+
+            lines.push(`<button data-rule="${it.rule_id}" data-date="${it.date}">overslaan</button>`);
+
+            li.innerHTML = lines.join("");
             ul.appendChild(li);
           });
           box.appendChild(ul);
@@ -125,14 +244,24 @@
 
     document.getElementById("rule-form").addEventListener("submit", async e=>{
       e.preventDefault();
+
       await sb.from("recurring_rules").insert({
         member_id: member.value,
         title: title.value,
+        location: location.value || null,
         weekday: +weekday.value,
         start_time: start_time.value,
-        end_time: end_time.value
+        end_time: end_time.value,
+        transport_mode: transport_mode.value || null,
+        transport_notes: transport_notes.value || null,
+        required_chaperone_member_id: required_chaperone.value || null,
+        optional_chaperone_member_ids: getOptionalChaperoneIds()
       });
+
       e.target.reset();
+      // checkboxes resetten
+      document.querySelectorAll("#optional_chaperones input[type=checkbox]").forEach(b=>b.checked=false);
+
       loadWeek();
     });
 
@@ -146,8 +275,10 @@
       }
     });
 
-    fillMembers();
-    loadWeek();
+    (async () => {
+      await loadMembers();
+      await loadWeek();
+    })();
   </script>
 </body>
 </html>
