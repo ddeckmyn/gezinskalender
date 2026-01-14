@@ -274,11 +274,15 @@
         loadWeek();
       }
     });
-
-    (async () => {
-      await loadMembers();
-      await loadWeek();
-    })();
+(async () => {
+  try {
+    await loadMembers();
+    await loadWeek();
+  } catch (e) {
+    alert("JS error: " + (e?.message || e));
+    console.error(e);
+  }
+})();
   </script>
 </body>
 </html>
