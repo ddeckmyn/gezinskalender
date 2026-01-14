@@ -17,15 +17,31 @@
   );
 
   console.log("Supabase verbonden");
+  <script>
+  async function loadMembers() {
+    const { data, error } = await supabase
+      .from("members")
+      .select("name, role");
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const ul = document.getElementById("members");
+    ul.innerHTML = "";
+
+    data.forEach(m => {
+      const li = document.createElement("li");
+      li.textContent = `${m.name} (${m.role})`;
+      ul.appendChild(li);
+    });
+  }
+
+  loadMembers();
 </script>
 <body>
   <h1>Gezinskalender</h1>
-  <p>✅ PWA werkt. Volgende stap: Supabase + weekview.</p>
-  <p><a href="/tv.html">TV-modus</a></p>
-  <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js");
-  }
-</script>
+<ul id="members"></ul>
 </body>
 </html>
