@@ -412,11 +412,11 @@
     }
 
     // navigatie
-    prev.addEventListener("click", () => { weekOffset -= 1; loadWeek(); });
-    next.addEventListener("click", () => { weekOffset += 1; loadWeek(); });
+document.getElementById("prev").addEventListener("click", () => { weekOffset -= 1; loadWeek(); });
+document.getElementById("next").addEventListener("click", () => { weekOffset += 1; loadWeek(); });
 
     // rule toevoegen
-    rule-form.addEventListener("submit", async e => {
+   document.getElementById("rule-form").addEventListener("submit", async e => {
       e.preventDefault();
       await sb.from("recurring_rules").insert({
         member_id: member.value,
@@ -437,7 +437,7 @@
     });
 
     // one-off toevoegen
-    oneoff-form.addEventListener("submit", async e => {
+   document.getElementById("oneoff-form").addEventListener("submit", async e => {
       e.preventDefault();
       await sb.from("activities").insert({
         member_id: one_member.value,
