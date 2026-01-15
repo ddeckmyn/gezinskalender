@@ -7,14 +7,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    body { font-family: system-ui, sans-serif; font-size: 28px; padding: 32px; }
-    h1 { font-size: 44px; margin: 0 0 16px; }
-    #week { display:grid; grid-template-columns:repeat(7,1fr); gap:16px; }
-    .day { border:1px solid #ddd; border-radius:16px; padding:14px; min-height:160px; }
+    body { font-family: system-ui, sans-serif; font-size: 26px; padding: 28px; }
+    h1 { font-size: 42px; margin: 0 0 14px; }
+    #week { display:grid; grid-template-columns:repeat(7,1fr); gap:14px; }
+    .day { border:1px solid #ddd; border-radius:16px; padding:12px; min-height:160px; }
     .today { border-width: 3px; }
-    .day strong{ display:block; font-size: 30px; margin-bottom: 8px; }
+    .holiday { background: #fff3cd; border-color:#f1d18a; border-width:2px; }
+    .badge { display:inline-block; font-size:14px; font-weight:700; padding:3px 10px; border-radius:999px; background:#ffec99; margin: 6px 0 10px; }
+    .day strong{ display:block; font-size: 28px; margin-bottom: 6px; }
     .item { margin: 10px 0; }
-    .meta { font-size: 20px; opacity: 0.85; margin-top: 2px; }
+    .meta { font-size: 18px; opacity: 0.85; margin-top: 2px; }
     .muted { opacity: 0.6; }
   </style>
 </head>
@@ -29,6 +31,8 @@
     );
 
     const dayNames = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
+    let membersCache = [];
+    let holidayCache = [];
 
     function getMonday(){
       const t=new Date(); const d=(t.getDay()+6)%7;
@@ -36,17 +40,29 @@
       return m;
     }
     function isoDate(d){ return d.toISOString().slice(0,10); }
-
-    let membersCache = [];
-
-    async function loadMembers(){
-      const { data, error } = await sb.from("members").select("id,name,role").order("name");
-      if (error) { console.error("members error", error); membersCache = []; return; }
-      membersCache = data || [];
+    function dateInHoliday(dateIso){
+      for (const h of holidayCache) {
+        if (dateIso >= h.start_date && dateIso <= h.end_date) return h.name;
+      }
+      return null;
     }
 
-    async function renderTVWeek(){
+    async function loadMembers(){
+      const { data } = await sb.from("members").select("id,name,role").order("name");
+      membersCache = data || [];
+    }
+    async function loadHolidays(){
+      const { data } = await sb
+        .from("holiday_events")
+        .select("name,start_date,end_date,region,schoolyear")
+        .eq("region","Vlaanderen")
+        .eq("schoolyear","2025-2026");
+      holidayCache = data || [];
+    }
+
+    async function renderWeek(){
       const monday = getMonday();
+      const next = new Date(monday); next.setDate(monday.getDate()+7);
       const todayIso = isoDate(new Date());
 
       const rulesRes = await sb
@@ -58,15 +74,18 @@
           members ( name )
         `);
 
-      const exRes = await sb
-        .from("recurrence_exceptions")
-        .select("rule_id,date");
+      const exRes = await sb.from("recurrence_exceptions").select("rule_id,date");
 
-      if (rulesRes.error) console.error("rules error", rulesRes.error);
-      if (exRes.error) console.error("exceptions error", exRes.error);
+      const oneRes = await sb
+        .from("activities")
+        .select(`id, title, location, start_at, transport, required_chaperone, members ( name )`)
+        .gte("start_at", monday.toISOString())
+        .lt("start_at", next.toISOString())
+        .order("start_at");
 
       const rules = rulesRes.data || [];
       const ex = exRes.data || [];
+      const oneOffs = oneRes.data || [];
 
       const byDay = Array.from({ length: 7 }, () => []);
 
@@ -74,7 +93,6 @@
         const i = r.weekday;
         const d = new Date(monday); d.setDate(monday.getDate() + i);
         const date = isoDate(d);
-
         if (ex.some(e => e.rule_id === r.id && e.date === date)) return;
 
         const requiredName =
@@ -84,32 +102,56 @@
 
         const optionalNames =
           Array.isArray(r.optional_chaperone_member_ids)
-            ? r.optional_chaperone_member_ids
-                .map(id => membersCache.find(m => m.id === id)?.name)
-                .filter(Boolean)
+            ? r.optional_chaperone_member_ids.map(id => membersCache.find(m => m.id === id)?.name).filter(Boolean)
             : [];
 
         byDay[i].push({
-          who: r.members.name,
-          title: r.title,
-          time: `${r.start_time.slice(0,5)}–${r.end_time.slice(0,5)}`,
+          kind:"rule",
+          who:r.members.name,
+          title:r.title,
+          time:`${r.start_time.slice(0,5)}–${r.end_time.slice(0,5)}`,
           date,
-          location: r.location || "",
-          transport_mode: r.transport_mode || "",
-          transport_notes: r.transport_notes || "",
+          location:r.location||"",
+          transport_mode:r.transport_mode||"",
+          transport_notes:r.transport_notes||"",
           requiredName,
           optionalNames
         });
       });
+
+      oneOffs.forEach(a => {
+        const d = new Date(a.start_at);
+        const idx = (d.getDay() + 6) % 7;
+        byDay[idx].push({
+          kind:"one",
+          who:a.members?.name||"Onbekend",
+          title:a.title,
+          time:new Date(a.start_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
+          date: isoDate(d),
+          location:a.location||"",
+          transport_mode:a.transport||"",
+          requiredName:a.required_chaperone||null,
+          optionalNames:[]
+        });
+      });
+
+      byDay.forEach(arr => arr.sort((x,y)=> (x.time||"").localeCompare(y.time||"")));
 
       const grid = document.getElementById("week");
       grid.innerHTML = "";
 
       byDay.forEach((items, i) => {
         const d = new Date(monday); d.setDate(monday.getDate() + i);
+        const date = isoDate(d);
+        const holidayName = dateInHoliday(date);
+
         const box = document.createElement("div");
-        box.className = "day" + (isoDate(d) === todayIso ? " today" : "");
+        box.className = "day"
+          + (date === todayIso ? " today" : "")
+          + (holidayName ? " holiday" : "");
+
         box.innerHTML = `<strong>${dayNames[i]} ${d.getDate()}/${d.getMonth()+1}</strong>`;
+        if (holidayName) box.innerHTML += `<div class="badge">schoolvakantie: ${holidayName}</div>`;
 
         if (items.length === 0) {
           const p = document.createElement("div");
@@ -128,7 +170,7 @@
               wrap.innerHTML += `<div class="meta">🚗 ${t}</div>`;
             }
             if (it.requiredName) wrap.innerHTML += `<div class="meta">👤 moet mee: ${it.requiredName}</div>`;
-            if (it.optionalNames.length) wrap.innerHTML += `<div class="meta">👥 kan mee: ${it.optionalNames.join(", ")}</div>`;
+            if (it.optionalNames?.length) wrap.innerHTML += `<div class="meta">👥 kan mee: ${it.optionalNames.join(", ")}</div>`;
 
             box.appendChild(wrap);
           });
@@ -140,8 +182,9 @@
 
     (async () => {
       await loadMembers();
-      await renderTVWeek();
-      setInterval(renderTVWeek, 60_000); // auto-refresh elke minuut
+      await loadHolidays();
+      await renderWeek();
+      setInterval(renderWeek, 60_000);
     })();
   </script>
 </body>
