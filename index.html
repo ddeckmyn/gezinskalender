@@ -7,98 +7,171 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: system-ui, sans-serif; }
+    .nav { display:flex; gap:12px; align-items:center; margin: 10px 0 14px; }
+    .nav button{ font-size: 22px; padding: 10px 16px; border-radius: 12px; border:1px solid #ddd; background:#fff; }
+    .nav .label{ font-weight: 700; }
     #week { display:grid; grid-template-columns:repeat(7,1fr); gap:16px; margin:16px 0 24px; }
-    .day { border:1px solid #ddd; border-radius:12px; padding:12px; min-height:140px; }
+    .day { border:1px solid #ddd; border-radius:12px; padding:12px; min-height:160px; }
     .day strong{ display:block; margin-bottom:8px; }
     .day ul{ margin:0 0 0 18px; padding:0; }
     .muted{ color:#777; }
     .meta{ color:#444; font-size: 14px; margin-top: 4px; }
-    form{ margin-top:16px; max-width: 520px; }
-    input, select { min-width: 220px; }
+    .holiday { background: #fff3cd; border-color:#f1d18a; border-width:2px; }
+    .holiday-badge { display:inline-block; font-size:12px; font-weight:700; padding:3px 8px; border-radius:999px; background:#ffec99; margin: 6px 0 10px; }
+    form{ margin-top:16px; max-width: 560px; }
+    input, select { min-width: 240px; }
     .row{ margin: 10px 0; }
     .small{ font-size: 14px; }
+    .actions button{ margin-left: 8px; }
+    .section { margin-top: 18px; }
+    .danger { border-color:#f3b1b1 !important; }
   </style>
 </head>
 <body>
   <h1>Gezinskalender</h1>
 
-  <h2>Deze week</h2>
+  <div class="nav">
+    <button id="prev">⬅</button>
+    <div class="label" id="range"></div>
+    <button id="next">➡</button>
+  </div>
+
   <div id="week"></div>
 
-  <h3>Nieuwe wekelijkse activiteit</h3>
-  <form id="rule-form">
-    <div class="row">
-      <label>Wie:
-        <select id="member"></select>
-      </label>
-    </div>
+  <div class="section">
+    <h3>Nieuwe wekelijkse activiteit</h3>
+    <form id="rule-form">
+      <div class="row">
+        <label>Wie:
+          <select id="member"></select>
+        </label>
+      </div>
 
-    <div class="row">
-      <label>Titel:
-        <input id="title" />
-      </label>
-    </div>
+      <div class="row">
+        <label>Titel:
+          <input id="title" />
+        </label>
+      </div>
 
-    <div class="row">
-      <label>Locatie:
-        <input id="location" placeholder="bv. Sporthal" />
-      </label>
-    </div>
+      <div class="row">
+        <label>Locatie:
+          <input id="location" placeholder="bv. Sporthal" />
+        </label>
+      </div>
 
-    <div class="row">
-      <label>Dag:
-        <select id="weekday">
-          <option value="0">Ma</option><option value="1">Di</option><option value="2">Wo</option>
-          <option value="3">Do</option><option value="4">Vr</option><option value="5">Za</option><option value="6">Zo</option>
-        </select>
-      </label>
-    </div>
+      <div class="row">
+        <label>Dag:
+          <select id="weekday">
+            <option value="0">Ma</option><option value="1">Di</option><option value="2">Wo</option>
+            <option value="3">Do</option><option value="4">Vr</option><option value="5">Za</option><option value="6">Zo</option>
+          </select>
+        </label>
+      </div>
 
-    <div class="row">
-      <label>Start:
-        <input type="time" id="start_time" />
-      </label>
-    </div>
+      <div class="row">
+        <label>Start:
+          <input type="time" id="start_time" />
+        </label>
+      </div>
 
-    <div class="row">
-      <label>Eind:
-        <input type="time" id="end_time" />
-      </label>
-    </div>
+      <div class="row">
+        <label>Eind:
+          <input type="time" id="end_time" />
+        </label>
+      </div>
 
-    <div class="row">
-      <label>Transport:
-        <select id="transport_mode">
-          <option value="">(geen)</option>
-          <option value="fiets">fiets</option>
-          <option value="auto">auto</option>
-          <option value="te voet">te voet</option>
-          <option value="ov">OV</option>
-          <option value="anders">anders</option>
-        </select>
-      </label>
-    </div>
+      <div class="row">
+        <label>Transport:
+          <select id="transport_mode">
+            <option value="">(geen)</option>
+            <option value="fiets">fiets</option>
+            <option value="auto">auto</option>
+            <option value="te voet">te voet</option>
+            <option value="ov">OV</option>
+            <option value="anders">anders</option>
+          </select>
+        </label>
+      </div>
 
-    <div class="row">
-      <label>Transport-notitie:
-        <input id="transport_notes" placeholder="bv. papa brengt, fiets mee" />
-      </label>
-    </div>
+      <div class="row">
+        <label>Transport-notitie:
+          <input id="transport_notes" placeholder="bv. Nathalie brengt, fiets mee" />
+        </label>
+      </div>
 
-    <div class="row">
-      <label>Begeleider (moet mee):
-        <select id="required_chaperone"></select>
-      </label>
-      <div class="small muted">Laat leeg als niemand verplicht mee moet.</div>
-    </div>
+      <div class="row">
+        <label>Begeleider (moet mee):
+          <select id="required_chaperone"></select>
+        </label>
+        <div class="small muted">Laat leeg als niemand verplicht mee moet.</div>
+      </div>
 
-    <div class="row">
-      <div>Begeleider (kan mee):</div>
-      <div id="optional_chaperones" class="small"></div>
-    </div>
+      <div class="row">
+        <div>Begeleider (kan mee):</div>
+        <div id="optional_chaperones" class="small"></div>
+      </div>
 
-    <button>Toevoegen</button>
-  </form>
+      <button>Toevoegen</button>
+    </form>
+  </div>
+
+  <div class="section">
+    <h3>Nieuwe occasionele activiteit</h3>
+    <form id="oneoff-form">
+      <div class="row">
+        <label>Wie:
+          <select id="one_member"></select>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Titel:
+          <input id="one_title" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Locatie:
+          <input id="one_location" placeholder="bv. Dokter" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Start:
+          <input type="datetime-local" id="one_start" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Eind:
+          <input type="datetime-local" id="one_end" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Transport:
+          <select id="one_transport">
+            <option value="">(geen)</option>
+            <option value="fiets">fiets</option>
+            <option value="auto">auto</option>
+            <option value="te voet">te voet</option>
+            <option value="ov">OV</option>
+            <option value="anders">anders</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Begeleider (moet mee):
+          <select id="one_required"></select>
+        </label>
+      </div>
+
+      <button>Toevoegen</button>
+    </form>
+  </div>
+
+  <p><a href="/tv.html">TV-modus</a></p>
 
   <script>
     const sb = window.supabase.createClient(
@@ -107,47 +180,77 @@
     );
 
     const dayNames = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
+    let weekOffset = 0;
+    let membersCache = [];
+    let holidayCache = [];
 
-    function getMonday(){
-      const t=new Date(); const d=(t.getDay()+6)%7;
-      const m=new Date(t); m.setDate(t.getDate()-d); m.setHours(0,0,0,0);
+    function mondayForOffset(offset){
+      const t=new Date();
+      const d=(t.getDay()+6)%7;
+      const m=new Date(t);
+      m.setDate(t.getDate()-d + offset*7);
+      m.setHours(0,0,0,0);
       return m;
     }
+    function isoDate(d){ return d.toISOString().slice(0,10); }
+    function toLocalISO(dtLocal){ return new Date(dtLocal).toISOString(); }
 
-    function isoDate(d){
-      return d.toISOString().slice(0,10);
+    function dateInHoliday(dateIso){
+      // holidayCache: {name,start_date,end_date}
+      for (const h of holidayCache) {
+        if (dateIso >= h.start_date && dateIso <= h.end_date) return h.name;
+      }
+      return null;
     }
-
-    let membersCache = [];
 
     async function loadMembers(){
       const { data, error } = await sb.from("members").select("id,name,role").order("name");
-if (error) { console.error("members error", error); membersCache = []; return; }
-membersCache = data || [];
+      if (error) { console.error("members error", error); membersCache = []; return; }
+      membersCache = data || [];
 
-      // "Wie" dropdown = iedereen
-      member.innerHTML = "";
-      data.forEach(m=>{
-        const o=document.createElement("option");
-        o.value=m.id; o.textContent=m.name; member.appendChild(o);
+      // dropdowns
+      const sel = document.getElementById("member");
+      const oneSel = document.getElementById("one_member");
+      sel.innerHTML = ""; oneSel.innerHTML = "";
+      membersCache.forEach(m=>{
+        const o=document.createElement("option"); o.value=m.id; o.textContent=m.name;
+        sel.appendChild(o);
+        const o2=o.cloneNode(true);
+        oneSel.appendChild(o2);
       });
 
-      // "moet mee" = alleen ouders/verzorgers (hier: role='ouder')
-      required_chaperone.innerHTML = `<option value="">(niemand)</option>`;
-      data.filter(m=>m.role==="ouder").forEach(m=>{
-        const o=document.createElement("option");
-        o.value=m.id; o.textContent=m.name; required_chaperone.appendChild(o);
+      const req = document.getElementById("required_chaperone");
+      const oneReq = document.getElementById("one_required");
+      req.innerHTML = `<option value="">(niemand)</option>`;
+      oneReq.innerHTML = `<option value="">(niemand)</option>`;
+
+      membersCache.filter(m=>m.role==="ouder").forEach(m=>{
+        const o=document.createElement("option"); o.value=m.id; o.textContent=m.name;
+        req.appendChild(o);
+        const o2=o.cloneNode(true);
+        oneReq.appendChild(o2);
       });
 
-      // "kan mee" checkboxes = ouders
       const wrap = document.getElementById("optional_chaperones");
       wrap.innerHTML = "";
-      data.filter(m=>m.role==="ouder").forEach(m=>{
+      membersCache.filter(m=>m.role==="ouder").forEach(m=>{
         const id = `opt_${m.id}`;
         const div = document.createElement("div");
         div.innerHTML = `<label><input type="checkbox" id="${id}" value="${m.id}"> ${m.name}</label>`;
         wrap.appendChild(div);
       });
+    }
+
+    async function loadHolidays(){
+      // we halen enkel deze + volgende maand range uit DB? simpel: alles voor 2025-2026
+      const { data, error } = await sb
+        .from("holiday_events")
+        .select("name,start_date,end_date,region,schoolyear")
+        .eq("region","Vlaanderen")
+        .eq("schoolyear","2025-2026");
+
+      if (error) { console.error("holidays error", error); holidayCache = []; return; }
+      holidayCache = data || [];
     }
 
     function getOptionalChaperoneIds(){
@@ -156,51 +259,73 @@ membersCache = data || [];
     }
 
     async function loadWeek(){
-      const monday=getMonday();
-const rulesRes = await sb
-  .from("recurring_rules")
-  .select(`
-    id, title, weekday, start_time, end_time, location,
-    transport_mode, transport_notes,
-    required_chaperone_member_id, optional_chaperone_member_ids,
-    members ( name )
-  `);
+      const monday = mondayForOffset(weekOffset);
+      const next = new Date(monday); next.setDate(monday.getDate()+7);
 
-const exRes = await sb
-  .from("recurrence_exceptions")
-  .select("rule_id,date");
+      const rangeEl = document.getElementById("range");
+      const endLabel = new Date(next); endLabel.setDate(next.getDate()-1);
+      rangeEl.textContent = `Week van ${monday.getDate()}/${monday.getMonth()+1} tot ${endLabel.getDate()}/${endLabel.getMonth()+1}`;
 
-if (rulesRes.error) console.error("rules error", rulesRes.error);
-if (exRes.error) console.error("exceptions error", exRes.error);
+      const rulesRes = await sb
+        .from("recurring_rules")
+        .select(`
+          id, title, weekday, start_time, end_time, location,
+          transport_mode, transport_notes,
+          required_chaperone_member_id, optional_chaperone_member_ids,
+          members ( name )
+        `);
 
-const rules = rulesRes.data || [];
-const ex = exRes.data || [];
-      const byDay=Array.from({length:7},()=>[]);
-      rules.forEach(r=>{
+      const exRes = await sb
+        .from("recurrence_exceptions")
+        .select("rule_id,date");
+
+      const oneRes = await sb
+        .from("activities")
+        .select(`
+          id, title, location, start_at, end_at, transport, required_chaperone,
+          members ( name )
+        `)
+        .gte("start_at", monday.toISOString())
+        .lt("start_at", next.toISOString())
+        .order("start_at");
+
+      if (rulesRes.error) console.error("rules error", rulesRes.error);
+      if (exRes.error) console.error("exceptions error", exRes.error);
+      if (oneRes.error) console.error("activities error", oneRes.error);
+
+      const rules = rulesRes.data || [];
+      const ex = exRes.data || [];
+      const oneOffs = oneRes.data || [];
+
+      const byDay = Array.from({ length: 7 }, () => []);
+
+      // 1) recurring occurrences voor deze week
+      rules.forEach(r => {
         const i = r.weekday;
-        const d=new Date(monday); d.setDate(monday.getDate()+i);
+        const d = new Date(monday); d.setDate(monday.getDate() + i);
         const date = isoDate(d);
 
-        if(ex.some(e=>e.rule_id===r.id && e.date===date)) return;
+        if (ex.some(e => e.rule_id === r.id && e.date === date)) return;
 
         const requiredName =
           r.required_chaperone_member_id
-            ? (membersCache.find(m=>m.id===r.required_chaperone_member_id)?.name || "ouder")
+            ? (membersCache.find(m => m.id === r.required_chaperone_member_id)?.name || "ouder")
             : null;
 
         const optionalNames =
           Array.isArray(r.optional_chaperone_member_ids)
             ? r.optional_chaperone_member_ids
-                .map(id => membersCache.find(m=>m.id===id)?.name)
+                .map(id => membersCache.find(m => m.id === id)?.name)
                 .filter(Boolean)
             : [];
 
         byDay[i].push({
-          rule_id:r.id,
-          who:r.members.name,
-          title:r.title,
-          time:`${r.start_time.slice(0,5)}–${r.end_time.slice(0,5)}`,
+          kind: "rule",
+          rule_id: r.id,
           date,
+          who: r.members.name,
+          title: r.title,
+          time: `${r.start_time.slice(0,5)}–${r.end_time.slice(0,5)}`,
           location: r.location || "",
           transport_mode: r.transport_mode || "",
           transport_notes: r.transport_notes || "",
@@ -209,20 +334,46 @@ const ex = exRes.data || [];
         });
       });
 
-      const grid=document.getElementById("week");
-      grid.innerHTML="";
-      byDay.forEach((items,i)=>{
-        const d=new Date(monday); d.setDate(monday.getDate()+i);
-        const box=document.createElement("div");
-        box.className="day";
-        box.innerHTML=`<strong>${dayNames[i]} ${d.getDate()}/${d.getMonth()+1}</strong>`;
+      // 2) one-off activities (activities table)
+      oneOffs.forEach(a => {
+        const d = new Date(a.start_at);
+        const idx = (d.getDay() + 6) % 7;
+        byDay[idx].push({
+          kind: "one",
+          activity_id: a.id,
+          who: a.members?.name || "Onbekend",
+          title: a.title,
+          time: new Date(a.start_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
+          location: a.location || "",
+          transport_mode: a.transport || "",
+          requiredName: a.required_chaperone || null
+        });
+      });
 
-        if(items.length===0){
-          box.innerHTML+=`<div class="muted">—</div>`;
+      // sorteer items per dag ruw op time-string (ok voor MVP)
+      byDay.forEach(arr => arr.sort((x,y)=> (x.time||"").localeCompare(y.time||"")));
+
+      const grid = document.getElementById("week");
+      grid.innerHTML = "";
+
+      byDay.forEach((items, i) => {
+        const d = new Date(monday); d.setDate(monday.getDate()+i);
+        const date = isoDate(d);
+        const holidayName = dateInHoliday(date);
+
+        const box = document.createElement("div");
+        box.className = "day" + (holidayName ? " holiday" : "");
+        box.innerHTML = `<strong>${dayNames[i]} ${d.getDate()}/${d.getMonth()+1}</strong>`;
+        if (holidayName) {
+          box.innerHTML += `<div class="holiday-badge">schoolvakantie: ${holidayName}</div>`;
+        }
+
+        if (items.length === 0) {
+          box.innerHTML += `<div class="muted">—</div>`;
         } else {
-          const ul=document.createElement("ul");
-          items.forEach(it=>{
-            const li=document.createElement("li");
+          const ul = document.createElement("ul");
+          items.forEach(it => {
+            const li = document.createElement("li");
             const lines = [];
 
             lines.push(`<div>${it.time} <b>${it.who}</b>: ${it.title}</div>`);
@@ -233,22 +384,40 @@ const ex = exRes.data || [];
               lines.push(`<div class="meta">🚗 ${t}</div>`);
             }
             if (it.requiredName) lines.push(`<div class="meta">👤 moet mee: ${it.requiredName}</div>`);
-            if (it.optionalNames.length) lines.push(`<div class="meta">👥 kan mee: ${it.optionalNames.join(", ")}</div>`);
+            if (it.optionalNames && it.optionalNames.length) lines.push(`<div class="meta">👥 kan mee: ${it.optionalNames.join(", ")}</div>`);
 
-            lines.push(`<button data-rule="${it.rule_id}" data-date="${it.date}">overslaan</button>`);
+            if (it.kind === "rule") {
+              lines.push(
+                `<div class="actions">
+                   <button data-skip-rule="${it.rule_id}" data-skip-date="${it.date}">overslaan</button>
+                   <button class="danger" data-del-rule="${it.rule_id}">regel weg</button>
+                 </div>`
+              );
+            } else {
+              lines.push(
+                `<div class="actions">
+                   <button class="danger" data-del-activity="${it.activity_id}">verwijder</button>
+                 </div>`
+              );
+            }
 
             li.innerHTML = lines.join("");
             ul.appendChild(li);
           });
           box.appendChild(ul);
         }
+
         grid.appendChild(box);
       });
     }
 
-    document.getElementById("rule-form").addEventListener("submit", async e=>{
-      e.preventDefault();
+    // navigatie
+    prev.addEventListener("click", () => { weekOffset -= 1; loadWeek(); });
+    next.addEventListener("click", () => { weekOffset += 1; loadWeek(); });
 
+    // rule toevoegen
+    rule-form.addEventListener("submit", async e => {
+      e.preventDefault();
       await sb.from("recurring_rules").insert({
         member_id: member.value,
         title: title.value,
@@ -263,30 +432,56 @@ const ex = exRes.data || [];
       });
 
       e.target.reset();
-      // checkboxes resetten
       document.querySelectorAll("#optional_chaperones input[type=checkbox]").forEach(b=>b.checked=false);
-
       loadWeek();
     });
 
-    document.addEventListener("click", async e=>{
-      if(e.target.tagName==="BUTTON" && e.target.dataset.rule){
+    // one-off toevoegen
+    oneoff-form.addEventListener("submit", async e => {
+      e.preventDefault();
+      await sb.from("activities").insert({
+        member_id: one_member.value,
+        title: one_title.value,
+        location: one_location.value || null,
+        start_at: toLocalISO(one_start.value),
+        end_at: toLocalISO(one_end.value),
+        transport: one_transport.value || null,
+        required_chaperone: one_required.value
+          ? (membersCache.find(m=>m.id===one_required.value)?.name || null)
+          : null
+      });
+      e.target.reset();
+      loadWeek();
+    });
+
+    // acties in week: overslaan / verwijderen
+    document.addEventListener("click", async e => {
+      if (e.target.dataset.skipRule) {
         await sb.from("recurrence_exceptions").insert({
-          rule_id:e.target.dataset.rule,
-          date:e.target.dataset.date
+          rule_id: e.target.dataset.skipRule,
+          date: e.target.dataset.skipDate
         });
         loadWeek();
       }
+
+      if (e.target.dataset.delRule) {
+        if (!confirm("Deze wekelijkse activiteit overal verwijderen?")) return;
+        await sb.from("recurring_rules").delete().eq("id", e.target.dataset.delRule);
+        loadWeek();
+      }
+
+      if (e.target.dataset.delActivity) {
+        if (!confirm("Deze activiteit verwijderen?")) return;
+        await sb.from("activities").delete().eq("id", e.target.dataset.delActivity);
+        loadWeek();
+      }
     });
-(async () => {
-  try {
-    await loadMembers();
-    await loadWeek();
-  } catch (e) {
-    alert("JS error: " + (e?.message || e));
-    console.error(e);
-  }
-})();
+
+    (async () => {
+      await loadMembers();
+      await loadHolidays();
+      await loadWeek();
+    })();
   </script>
 </body>
 </html>
