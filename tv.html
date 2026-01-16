@@ -1,23 +1,95 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="nl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gezinskalender – TV</title>
+  <title>Gezinskalender - TV</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    body { font-family: system-ui, sans-serif; font-size: 26px; padding: 28px; }
-    h1 { font-size: 42px; margin: 0 0 14px; }
-    #week { display:grid; grid-template-columns:repeat(7,1fr); gap:14px; }
-    .day { border:1px solid #ddd; border-radius:16px; padding:12px; min-height:160px; }
-    .today { border-width: 3px; }
-    .holiday { background: #fff3cd; border-color:#f1d18a; border-width:2px; }
-    .badge { display:inline-block; font-size:14px; font-weight:700; padding:3px 10px; border-radius:999px; background:#ffec99; margin: 6px 0 10px; }
-    .day strong{ display:block; font-size: 28px; margin-bottom: 6px; }
+    @import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Nunito:wght@400;600;700&display=swap");
+
+    :root {
+      color-scheme: light;
+      font-family: "Nunito", "Segoe UI", sans-serif;
+      background: #f7f4ef;
+      color: #2e2e2e;
+      --soft-orange: #f6b26b;
+      --soft-blue: #b7d7f0;
+      --panel: #f0f6ff;
+      --line: #eadfcf;
+      --shadow: rgba(96, 132, 178, 0.22);
+    }
+
+    body {
+      margin: 0;
+      font-size: 26px;
+      padding: 28px;
+      background: linear-gradient(140deg, #fff4e6 0%, #eef6ff 50%, #cfe5ff 100%);
+    }
+
+    h1 {
+      font-family: "Fraunces", "Nunito", serif;
+      font-size: 46px;
+      margin: 0 0 14px;
+      color: #d07a2b;
+    }
+
+    #week {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .day {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 12px 14px;
+      min-height: 160px;
+      background: var(--panel);
+      box-shadow: 0 18px 34px var(--shadow);
+    }
+
+    .today {
+      border-width: 4px;
+      border-color: #6aa8de;
+      background: #c6e4ff;
+      box-shadow: 0 22px 36px rgba(85, 145, 210, 0.35);
+    }
+
+    .holiday {
+      background: #fff1d6;
+      border-color:#f0c68a;
+      border-width:2px;
+    }
+
+    .badge {
+      display:inline-block;
+      font-size:14px;
+      font-weight:700;
+      padding:3px 10px;
+      border-radius:999px;
+      background:#ffe2b3;
+      margin: 6px 0 10px;
+    }
+
+    .day strong {
+      display:block;
+      font-size: 28px;
+      margin-bottom: 6px;
+    }
+
     .item { margin: 10px 0; }
     .meta { font-size: 18px; opacity: 0.85; margin-top: 2px; }
     .muted { opacity: 0.6; }
+
+    @media (max-width: 1200px) {
+      #week { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 860px) {
+      #week { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
   </style>
 </head>
 <body>
@@ -68,17 +140,16 @@
       const rulesRes = await sb
         .from("recurring_rules")
         .select(`
-          id, title, weekday, start_time, end_time, location,
+          id, member_id, title, weekday, start_time, end_time, location,
           transport_mode, transport_notes,
-          required_chaperone_member_id, optional_chaperone_member_ids,
-          members ( name )
+          required_chaperone_member_id
         `);
 
       const exRes = await sb.from("recurrence_exceptions").select("rule_id,date");
 
       const oneRes = await sb
         .from("activities")
-        .select(`id, title, location, start_at, transport, required_chaperone, members ( name )`)
+        .select(`id, member_id, title, location, start_at, transport, required_chaperone`)
         .gte("start_at", monday.toISOString())
         .lt("start_at", next.toISOString())
         .order("start_at");
@@ -100,38 +171,39 @@
             ? (membersCache.find(m => m.id === r.required_chaperone_member_id)?.name || "ouder")
             : null;
 
-        const optionalNames =
-          Array.isArray(r.optional_chaperone_member_ids)
-            ? r.optional_chaperone_member_ids.map(id => membersCache.find(m => m.id === id)?.name).filter(Boolean)
-            : [];
+        const who =
+          membersCache.find(m => m.id === r.member_id)?.name
+          || "Onbekend";
 
         byDay[i].push({
           kind:"rule",
-          who:r.members.name,
+          who,
           title:r.title,
-          time:`${r.start_time.slice(0,5)}–${r.end_time.slice(0,5)}`,
+          time:`${r.start_time.slice(0,5)}-${r.end_time.slice(0,5)}`,
           date,
           location:r.location||"",
           transport_mode:r.transport_mode||"",
           transport_notes:r.transport_notes||"",
-          requiredName,
-          optionalNames
+          requiredName
         });
       });
 
       oneOffs.forEach(a => {
         const d = new Date(a.start_at);
         const idx = (d.getDay() + 6) % 7;
+        const who =
+          membersCache.find(m => m.id === a.member_id)?.name
+          || "Onbekend";
+
         byDay[idx].push({
           kind:"one",
-          who:a.members?.name||"Onbekend",
+          who,
           title:a.title,
           time:new Date(a.start_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
           date: isoDate(d),
           location:a.location||"",
           transport_mode:a.transport||"",
-          requiredName:a.required_chaperone||null,
-          optionalNames:[]
+          requiredName:a.required_chaperone||null
         });
       });
 
@@ -156,7 +228,7 @@
         if (items.length === 0) {
           const p = document.createElement("div");
           p.className = "muted";
-          p.textContent = "—";
+          p.textContent = "-";
           box.appendChild(p);
         } else {
           items.forEach(it => {
@@ -164,13 +236,12 @@
             wrap.className = "item";
             wrap.innerHTML = `<div>${it.time} <b>${it.who}</b>: ${it.title}</div>`;
 
-            if (it.location) wrap.innerHTML += `<div class="meta">📍 ${it.location}</div>`;
+            if (it.location) wrap.innerHTML += `<div class="meta">Locatie: ${it.location}</div>`;
             if (it.transport_mode || it.transport_notes) {
-              const t = [it.transport_mode, it.transport_notes].filter(Boolean).join(" — ");
-              wrap.innerHTML += `<div class="meta">🚗 ${t}</div>`;
+              const t = [it.transport_mode, it.transport_notes].filter(Boolean).join(" - ");
+              wrap.innerHTML += `<div class="meta">Transport: ${t}</div>`;
             }
-            if (it.requiredName) wrap.innerHTML += `<div class="meta">👤 moet mee: ${it.requiredName}</div>`;
-            if (it.optionalNames?.length) wrap.innerHTML += `<div class="meta">👥 kan mee: ${it.optionalNames.join(", ")}</div>`;
+            if (it.requiredName) wrap.innerHTML += `<div class="meta">Begeleider: ${it.requiredName}</div>`;
 
             box.appendChild(wrap);
           });
@@ -189,3 +260,4 @@
   </script>
 </body>
 </html>
+

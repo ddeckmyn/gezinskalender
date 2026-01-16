@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="nl">
 <head>
   <meta charset="utf-8" />
@@ -6,63 +6,214 @@
   <title>Gezinskalender</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: system-ui, sans-serif; }
-    .nav { display:flex; gap:12px; align-items:center; margin: 10px 0 14px; }
-    .nav button{ font-size: 22px; padding: 10px 16px; border-radius: 12px; border:1px solid #ddd; background:#fff; }
-    .nav .label{ font-weight: 700; }
-    #week { display:grid; grid-template-columns:repeat(7,1fr); gap:16px; margin:16px 0 24px; }
-    .day { border:1px solid #ddd; border-radius:12px; padding:12px; min-height:160px; }
-    .day strong{ display:block; margin-bottom:8px; }
-    .day ul{ margin:0 0 0 18px; padding:0; }
-    .muted{ color:#777; }
-    .meta{ color:#444; font-size: 14px; margin-top: 4px; }
-    .holiday { background: #fff3cd; border-color:#f1d18a; border-width:2px; }
-    .holiday-badge { display:inline-block; font-size:12px; font-weight:700; padding:3px 8px; border-radius:999px; background:#ffec99; margin: 6px 0 10px; }
-    form{ margin-top:12px; max-width: 560px; }
-    input, select { min-width: 240px; }
-    .row{ margin: 10px 0; }
-    .small{ font-size: 14px; }
-    .actions button{ margin-left: 8px; }
-    .section { margin-top: 18px; }
+    @import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Nunito:wght@400;600;700&display=swap");
+
+    :root {
+      color-scheme: light;
+      font-family: "Nunito", "Segoe UI", sans-serif;
+      background: #f7f4ef;
+      color: #3a3a3a;
+      --soft-orange: #f6b26b;
+      --soft-orange-strong: #e08b3f;
+      --soft-blue: #b7d7f0;
+      --soft-blue-dark: #87b6de;
+      --panel: #fff8f0;
+      --panel-alt: #f2f7fb;
+      --line: #eadfcf;
+      --muted: #7b7b7b;
+      --shadow: rgba(186, 136, 92, 0.15);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px 18px 40px;
+      background: linear-gradient(135deg, #fff4e6 0%, #f7f9fb 45%, #eaf4fb 100%);
+    }
+
+    h1 {
+      font-family: "Fraunces", "Nunito", serif;
+      font-size: clamp(2rem, 3vw, 2.6rem);
+      margin-bottom: 8px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin: 10px 0 18px;
+      flex-wrap: wrap;
+    }
+
+    .nav button {
+      font-size: 20px;
+      padding: 8px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 6px 16px var(--shadow);
+      cursor: pointer;
+    }
+
+    .nav .label {
+      font-weight: 700;
+      color: var(--soft-orange-strong);
+    }
+
+    #week {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 16px;
+      margin: 16px 0 24px;
+    }
+
+    .day {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      min-height: 160px;
+      background: var(--panel);
+      box-shadow: 0 18px 32px var(--shadow);
+    }
+
+    .today {
+      border-color: var(--soft-blue-dark);
+      background: #bfe2ff;
+      box-shadow: 0 20px 36px rgba(70, 130, 200, 0.35);
+      outline: 3px solid rgba(135, 182, 222, 0.6);
+    }
+
+    .day strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1rem;
+      color: #4a4a4a;
+    }
+
+    .day ul { margin: 0 0 0 18px; padding: 0; }
+    .muted { color: var(--muted); }
+    .meta { color: #4a4a4a; font-size: 14px; margin-top: 4px; }
+
+    .holiday {
+      background: #fff1d6;
+      border-color: #f0c68a;
+      border-width: 2px;
+    }
+
+    .holiday-badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #ffe2b3;
+      margin: 6px 0 10px;
+    }
+
+    form { margin-top: 12px; max-width: 640px; }
+    input, select {
+      width: min(100%, 380px);
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .row { margin: 10px 0; }
+    .small { font-size: 14px; }
+
+    .actions button { margin-left: 8px; }
+    .actions { display: none; margin-top: 8px; }
+    .activity-item { cursor: pointer; }
+    .activity-item.open .actions { display: block; }
+
+    .section {
+      margin-top: 18px;
+      background: var(--panel-alt);
+      border-radius: 18px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+    }
+
     .danger { border-color:#f3b1b1 !important; }
-    .people { border:1px solid #eee; border-radius:12px; padding:12px; }
-    .people ul{ margin: 6px 0 0 18px; }
+    .people { border:1px solid var(--line); border-radius:16px; padding:12px; background: var(--panel); }
+    .people ul { margin: 6px 0 0 18px; }
+
+    @media (max-width: 960px) {
+      #week { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 620px) {
+      #week { grid-template-columns: 1fr; }
+      .nav { justify-content: space-between; }
+      .nav .label { width: 100%; }
+    }
   </style>
 </head>
 <body>
   <h1>Gezinskalender</h1>
 
   <div class="nav">
-    <button id="prev">⬅</button>
+    <button id="prev">&larr;</button>
     <div class="label" id="range"></div>
-    <button id="next">➡</button>
+    <button id="next">&rarr;</button>
   </div>
 
   <div id="week"></div>
 
-  <div class="section people">
-    <h3>Personen</h3>
-    <ul id="people-list"></ul>
-
-    <form id="person-form">
+  <div class="section">
+    <h3>Nieuwe eenmalige activiteit</h3>
+    <form id="oneoff-form">
       <div class="row">
-        <label>Naam:
-          <input id="person_name" placeholder="bv. Oma" />
+        <label>Wie:
+          <select id="one_member"></select>
         </label>
       </div>
 
       <div class="row">
-        <label>Rol:
-          <select id="person_role">
-            <option value="ouder">ouder</option>
-            <option value="kind">kind</option>
-            <option value="verzorger">verzorger</option>
+        <label>Activiteit:
+          <input id="one_title" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Locatie:
+          <input id="one_location" placeholder="bv. Dokter" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Start:
+          <input type="datetime-local" id="one_start" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Eind:
+          <input type="datetime-local" id="one_end" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Transport:
+          <select id="one_transport">
+            <option value="">(geen)</option>
+            <option value="fiets">fiets</option>
+            <option value="auto">auto</option>
+            <option value="te voet">te voet</option>
+            <option value="ov">OV</option>
+            <option value="anders">anders</option>
           </select>
         </label>
       </div>
 
-      <button>Persoon toevoegen</button>
-      <div class="small muted">Deactiveren is veiliger dan wissen: oude afspraken blijven intact.</div>
+      <div class="row">
+        <label>Begeleider (moet mee):
+          <select id="one_required"></select>
+        </label>
+      </div>
+
+      <button>Toevoegen</button>
     </form>
   </div>
 
@@ -76,14 +227,14 @@
       </div>
 
       <div class="row">
-        <label>Titel:
+        <label>Activiteit:
           <input id="title" />
         </label>
       </div>
 
       <div class="row">
         <label>Locatie:
-          <input id="location" placeholder="bv. Sporthal" />
+          <input id="location_field" placeholder="bv. Sporthal" />
         </label>
       </div>
 
@@ -134,70 +285,42 @@
         <div class="small muted">Laat leeg als niemand verplicht mee moet.</div>
       </div>
 
-      <div class="row">
-        <div>Begeleider (kan mee):</div>
-        <div id="optional_chaperones" class="small"></div>
-      </div>
-
       <button>Toevoegen</button>
     </form>
+    <div id="rule-status" class="small muted"></div>
   </div>
 
-  <div class="section">
-    <h3>Nieuwe occasionele activiteit</h3>
-    <form id="oneoff-form">
+  <div class="section people">
+    <h3>Personen</h3>
+    <ul id="people-list"></ul>
+
+    <form id="person-form">
       <div class="row">
-        <label>Wie:
-          <select id="one_member"></select>
+        <label>Naam:
+          <input id="person_name" placeholder="bv. Oma" />
         </label>
       </div>
 
       <div class="row">
-        <label>Titel:
-          <input id="one_title" />
-        </label>
-      </div>
-
-      <div class="row">
-        <label>Locatie:
-          <input id="one_location" placeholder="bv. Dokter" />
-        </label>
-      </div>
-
-      <div class="row">
-        <label>Start:
-          <input type="datetime-local" id="one_start" />
-        </label>
-      </div>
-
-      <div class="row">
-        <label>Eind:
-          <input type="datetime-local" id="one_end" />
-        </label>
-      </div>
-
-      <div class="row">
-        <label>Transport:
-          <select id="one_transport">
-            <option value="">(geen)</option>
-            <option value="fiets">fiets</option>
-            <option value="auto">auto</option>
-            <option value="te voet">te voet</option>
-            <option value="ov">OV</option>
-            <option value="anders">anders</option>
+        <label>Rol:
+          <select id="person_role">
+            <option value="ouder">ouder</option>
+            <option value="kind">kind</option>
+            <option value="verzorger">verzorger</option>
           </select>
         </label>
       </div>
 
-      <div class="row">
-        <label>Begeleider (moet mee):
-          <select id="one_required"></select>
-        </label>
-      </div>
-
-      <button>Toevoegen</button>
+      <button>Persoon toevoegen</button>
+      <div class="small muted">Deactiveren is veiliger dan wissen: oude afspraken blijven intact.</div>
     </form>
   </div>
+
+  
+
+  
+
+  
 
   <p><a href="/tv.html">TV-modus</a></p>
 
@@ -270,14 +393,6 @@
         oneReq.appendChild(o2);
       });
 
-      const wrap = document.getElementById("optional_chaperones");
-      wrap.innerHTML = "";
-      active.filter(m=>m.role==="ouder" || m.role==="verzorger").forEach(m=>{
-        const id = `opt_${m.id}`;
-        const div = document.createElement("div");
-        div.innerHTML = `<label><input type="checkbox" id="${id}" value="${m.id}"> ${m.name}</label>`;
-        wrap.appendChild(div);
-      });
     }
 
     async function loadHolidays(){
@@ -295,18 +410,10 @@
       return /^\d+$/.test(String(value)) ? Number(value) : value;
     }
 
-    function getOptionalChaperoneIds(){
-      const boxes = document.querySelectorAll("#optional_chaperones input[type=checkbox]");
-      const ids = Array.from(boxes)
-        .filter(b=>b.checked)
-        .map(b=>normalizeId(b.value))
-        .filter(Boolean);
-      return ids.length ? Array.from(new Set(ids)) : null;
-    }
-
     async function loadWeek(){
       const monday = mondayForOffset(weekOffset);
       const next = new Date(monday); next.setDate(monday.getDate()+7);
+      const todayIso = isoDate(new Date());
 
       const rangeEl = document.getElementById("range");
       const endLabel = new Date(next); endLabel.setDate(next.getDate()-1);
@@ -317,15 +424,14 @@
         .select(`
           id, member_id, title, weekday, start_time, end_time, location,
           transport_mode, transport_notes,
-          required_chaperone_member_id, optional_chaperone_member_ids,
-          members ( name )
+          required_chaperone_member_id
         `);
 
       const exRes = await sb.from("recurrence_exceptions").select("rule_id,date");
 
       const oneRes = await sb
         .from("activities")
-        .select(`id, member_id, title, location, start_at, end_at, transport, required_chaperone, members ( name )`)
+        .select(`id, member_id, title, location, start_at, end_at, transport, required_chaperone`)
         .gte("start_at", monday.toISOString())
         .lt("start_at", next.toISOString())
         .order("start_at");
@@ -353,7 +459,6 @@
 
         const whoName =
           membersCache.find(m => m.id === r.member_id)?.name
-          || r.members?.name
           || "Onbekend";
 
         const requiredName =
@@ -361,34 +466,27 @@
             ? (membersCache.find(m => m.id === r.required_chaperone_member_id)?.name || "ouder")
             : null;
 
-        const optionalNames =
-          Array.isArray(r.optional_chaperone_member_ids)
-            ? r.optional_chaperone_member_ids.map(id => membersCache.find(m => m.id === id)?.name).filter(Boolean)
-            : [];
-
         byDay[i].push({
           kind: "rule",
           rule_id: r.id,
           date,
           who: whoName,
           title: r.title,
-          time: `${r.start_time.slice(0,5)}–${r.end_time.slice(0,5)}`,
+          time: `${r.start_time.slice(0,5)}-${r.end_time.slice(0,5)}`,
           location: r.location || "",
           transport_mode: r.transport_mode || "",
           transport_notes: r.transport_notes || "",
-          requiredName,
-          optionalNames
+          requiredName
         });
       });
 
-      // one-offs (alleen actieve members) — nu op member_id
+      // one-offs (alleen actieve members) â€” nu op member_id
       oneOffs.forEach(a => {
         const memberActive = membersCache.find(m => m.id === a.member_id)?.is_active;
         if (memberActive === false) return;
 
         const who =
           membersCache.find(m => m.id === a.member_id)?.name
-          || a.members?.name
           || "Onbekend";
 
         const d = new Date(a.start_at);
@@ -416,25 +514,25 @@
         const holidayName = dateInHoliday(date);
 
         const box = document.createElement("div");
-        box.className = "day" + (holidayName ? " holiday" : "");
+        box.className = "day" + (date === todayIso ? " today" : "") + (holidayName ? " holiday" : "");
         box.innerHTML = `<strong>${dayNames[i]} ${d.getDate()}/${d.getMonth()+1}</strong>`;
         if (holidayName) box.innerHTML += `<div class="holiday-badge">schoolvakantie: ${holidayName}</div>`;
 
         if (items.length === 0) {
-          box.innerHTML += `<div class="muted">—</div>`;
+          box.innerHTML += `<div class="muted">-</div>`;
         } else {
           const ul = document.createElement("ul");
           items.forEach(it => {
             const li = document.createElement("li");
+            li.className = "activity-item";
             const lines = [];
             lines.push(`<div>${it.time} <b>${it.who}</b>: ${it.title}</div>`);
-            if (it.location) lines.push(`<div class="meta">📍 ${it.location}</div>`);
+            if (it.location) lines.push(`<div class="meta">Locatie: ${it.location}</div>`);
             if (it.transport_mode || it.transport_notes) {
-              const t = [it.transport_mode, it.transport_notes].filter(Boolean).join(" — ");
-              lines.push(`<div class="meta">🚗 ${t}</div>`);
+              const t = [it.transport_mode, it.transport_notes].filter(Boolean).join(" - ");
+              lines.push(`<div class="meta">Transport: ${t}</div>`);
             }
-            if (it.requiredName) lines.push(`<div class="meta">👤 moet mee: ${it.requiredName}</div>`);
-            if (it.optionalNames && it.optionalNames.length) lines.push(`<div class="meta">👥 kan mee: ${it.optionalNames.join(", ")}</div>`);
+            if (it.requiredName) lines.push(`<div class="meta">Begeleider: ${it.requiredName}</div>`);
 
             if (it.kind === "rule") {
               lines.push(
@@ -451,7 +549,7 @@
               );
             }
 
-            li.innerHTML = lines.join("");
+            li.innerHTML = lines.join(" - ");
             ul.appendChild(li);
           });
           box.appendChild(ul);
@@ -480,38 +578,52 @@
 
     document.getElementById("rule-form").addEventListener("submit", async e => {
       e.preventDefault();
+      const statusEl = document.getElementById("rule-status");
+      statusEl.textContent = "";
+      const memberEl = document.getElementById("member");
+      const titleEl = document.getElementById("title");
+      const locationEl = document.getElementById("location_field");
+      const weekdayEl = document.getElementById("weekday");
+      const startEl = document.getElementById("start_time");
+      const endEl = document.getElementById("end_time");
+      const transportModeEl = document.getElementById("transport_mode");
+      const transportNotesEl = document.getElementById("transport_notes");
+      const requiredEl = document.getElementById("required_chaperone");
 
-      if (!member.value || !title.value.trim() || !start_time.value || !end_time.value) {
-        alert("Vul minstens in: wie, titel, start en eind.");
+      if (!memberEl.value || !titleEl.value.trim() || !startEl.value || !endEl.value) {
+        alert("Vul minstens in: wie, activiteit, start en eind.");
         return;
       }
 
-      if (end_time.value <= start_time.value) {
+      if (endEl.value <= startEl.value) {
         alert("Eindtijd moet na de starttijd liggen.");
         return;
       }
 
       const res = await sb.from("recurring_rules").insert({
-        member_id: normalizeId(member.value),
-        title: title.value.trim(),
-        location: location.value || null,
-        weekday: +weekday.value,
-        start_time: start_time.value,
-        end_time: end_time.value,
-        transport_mode: transport_mode.value || null,
-        transport_notes: transport_notes.value || null,
-        required_chaperone_member_id: normalizeId(required_chaperone.value),
-        optional_chaperone_member_ids: getOptionalChaperoneIds()
-      });
+        member_id: normalizeId(memberEl.value),
+        title: titleEl.value.trim(),
+        location: locationEl.value.trim() || null,
+        weekday: +weekdayEl.value,
+        start_time: startEl.value,
+        end_time: endEl.value,
+        transport_mode: transportModeEl.value || null,
+        transport_notes: transportNotesEl.value || null,
+        required_chaperone_member_id: normalizeId(requiredEl.value)
+      }).select("id").single();
 
       if (res.error) {
-        alert("Opslaan mislukt: " + res.error.message);
+        statusEl.textContent = "Opslaan mislukt: " + res.error.message;
+        statusEl.classList.remove("muted");
+        statusEl.style.color = "#b00020";
         console.error(res.error);
         return;
       }
 
       e.target.reset();
-      document.querySelectorAll("#optional_chaperones input[type=checkbox]").forEach(b=>b.checked=false);
+      statusEl.textContent = "Activiteit toegevoegd.";
+      statusEl.classList.remove("muted");
+      statusEl.style.color = "#0a7d2b";
       loadWeek();
     });
 
@@ -519,7 +631,7 @@
       e.preventDefault();
 
       if (!one_member.value || !one_title.value.trim() || !one_start.value) {
-        alert("Vul minstens in: wie, titel, start.");
+        alert("Vul minstens in: wie, activiteit, start.");
         return;
       }
 
@@ -546,6 +658,11 @@
     });
 
     document.addEventListener("click", async e => {
+      const item = e.target.closest(".activity-item");
+      if (item && !e.target.closest("button")) {
+        item.classList.toggle("open");
+      }
+
       if (e.target.dataset.skipRule) {
         const res = await sb.from("recurrence_exceptions").insert({
           rule_id: e.target.dataset.skipRule,
@@ -586,3 +703,9 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
