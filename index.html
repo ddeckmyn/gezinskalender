@@ -290,9 +290,18 @@
       holidayCache = data || [];
     }
 
+    function normalizeId(value){
+      if (value === null || value === undefined || value === "") return null;
+      return /^\d+$/.test(String(value)) ? Number(value) : value;
+    }
+
     function getOptionalChaperoneIds(){
       const boxes = document.querySelectorAll("#optional_chaperones input[type=checkbox]");
-      return Array.from(boxes).filter(b=>b.checked).map(b=>b.value);
+      const ids = Array.from(boxes)
+        .filter(b=>b.checked)
+        .map(b=>normalizeId(b.value))
+        .filter(Boolean);
+      return ids.length ? Array.from(new Set(ids)) : null;
     }
 
     async function loadWeek(){
@@ -477,8 +486,13 @@
         return;
       }
 
+      if (end_time.value <= start_time.value) {
+        alert("Eindtijd moet na de starttijd liggen.");
+        return;
+      }
+
       const res = await sb.from("recurring_rules").insert({
-        member_id: member.value,
+        member_id: normalizeId(member.value),
         title: title.value.trim(),
         location: location.value || null,
         weekday: +weekday.value,
@@ -486,7 +500,7 @@
         end_time: end_time.value,
         transport_mode: transport_mode.value || null,
         transport_notes: transport_notes.value || null,
-        required_chaperone_member_id: required_chaperone.value || null,
+        required_chaperone_member_id: normalizeId(required_chaperone.value),
         optional_chaperone_member_ids: getOptionalChaperoneIds()
       });
 
@@ -510,7 +524,7 @@
       }
 
       const res = await sb.from("activities").insert({
-        member_id: one_member.value,
+        member_id: normalizeId(one_member.value),
         title: one_title.value.trim(),
         location: one_location.value || null,
         start_at: toLocalISO(one_start.value),
